@@ -1,3 +1,7 @@
+"""
+Index storage support
+---------------------
+"""
 from typing import Iterable, Iterator, Mapping, Tuple, Union
 import collections
 import abc
@@ -5,23 +9,11 @@ import os
 import sqlite3
 
 
-class Store(collections.abc.MutableMapping):
-    @abc.abstractclassmethod
-    def set_metadata(self, *args, **kwargs):
-        pass
-
-    @abc.abstractclassmethod
-    def get_metadata(self):
-        pass
-
-
 class SQLiteStore(collections.abc.MutableMapping):
     """Storage class using SQLite.
 
     Args:
         path (str): Location of database file.
-        synchronizer (lock.Synchronizer): Only necessary if attributes may
-            be modified from multiple threads or processes.
         **kwargs: Keyword arguments passed through to the `sqlite3.connect`
             function.
     """

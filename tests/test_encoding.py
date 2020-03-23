@@ -1,5 +1,5 @@
 import numpy as np
-import core
+import geohash.core
 
 testcases = [
     [0xc28a4d93b20a22f8, "sb54v4xk18jg", 0.497818518, 38.198505253],
@@ -4100,21 +4100,19 @@ testcases = [
     [0x8593f3ae3cbaf84c, "hq9z7cjwrcw4", -52.156511416, 13.883626414],
 ]
 
+
 def test_encoding_decoding():
     dtype = np.dtype([("lng", "f8"), ("lat", "f8")])
     points = np.array([(item[3], item[2]) for item in testcases], dtype=dtype)
 
-    int_hashs = core.int64.encode(points)
+    int_hashs = geohash.core.int64.encode(points)
     assert np.all([item[0] for item in testcases] == int_hashs)
-    decoded_points = core.int64.decode(int_hashs, round=True)
+    decoded_points = geohash.core.int64.decode(int_hashs, round=True)
     assert np.all(np.abs(points["lat"] - decoded_points["lat"]) < 1e-7)
     assert np.all(np.abs(points["lng"] - decoded_points["lng"]) < 1e-7)
 
-    str_hashs = core.string.encode(points)
+    str_hashs = geohash.core.string.encode(points)
     assert np.all([item[1] for item in testcases] == str_hashs.astype("U"))
-    decoded_points = core.string.decode(str_hashs, round=True)
+    decoded_points = geohash.core.string.decode(str_hashs, round=True)
     assert np.all(np.abs(points["lat"] - decoded_points["lat"]) < 1e-6)
     assert np.all(np.abs(points["lng"] - decoded_points["lng"]) < 1e-6)
-
-    # int_hashs = core.int64.encode(points, bits=5*12)
-    # assert np.all(core.string.to_integer(str_hashs) == int_hashs)

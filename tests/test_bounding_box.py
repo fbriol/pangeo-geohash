@@ -1,7 +1,7 @@
-import core
+import geohash.core
 
 decodecases = [
- ["91rc", (7.20703125, 7.3828125, -124.1015625, -123.75)],
+    ["91rc", (7.20703125, 7.3828125, -124.1015625, -123.75)],
  ["c", (45.0, 90.0, -135.0, -90.0)],
  ["0fuz", (-73.30078125, -73.125, -139.5703125, -139.21875)],
  ["dwfcndf", (38.1596374512, 38.1610107422, -63.3444213867, -63.3430480957)],
@@ -4099,8 +4099,10 @@ decodecases = [
  ["suj", (22.5, 23.90625, 40.78125, 42.187)]
 ]
 
+
 def test_bbox():
     for hash_str, (min_lat, max_lat, min_lng, max_lng) in decodecases:
-        point = core.string.decode(hash_str)
-        assert core.Box(core.Point(min_lng, min_lat),
-                        core.Point(max_lng, max_lat)).contains(point)
+        point = geohash.core.string.decode(hash_str)
+        assert geohash.core.Box(geohash.core.Point(min_lng, min_lat),
+                                geohash.core.Point(max_lng,
+                                                   max_lat)).contains(point)

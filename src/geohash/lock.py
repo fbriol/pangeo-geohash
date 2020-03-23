@@ -1,3 +1,7 @@
+"""
+Lock handling used to synchronize resources
+-------------------------------------------
+"""
 from typing import Any, Union
 import abc
 import pathlib
@@ -32,7 +36,11 @@ class ThreadSynchronizer(Synchronizer):
 
 
 class ProcessSynchronizer(Synchronizer):
-    """Provides synchronization using file locks"""
+    """Provides synchronization using file locks
+
+    Args:
+        path (pathlib.Path, str): The file used for locking/unlocking
+    """
     def __init__(self, path: Union[pathlib.Path, str]):
         if isinstance(path, str):
             path = pathlib.Path(path)

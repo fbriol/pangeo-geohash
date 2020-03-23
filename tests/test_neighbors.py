@@ -1,5 +1,5 @@
 import numpy as np
-import core
+import geohash.core
 
 cases = [
     [
@@ -10325,15 +10325,17 @@ cases = [
     ],
 ]
 
+
 def test_neighbors():
     for (lat, lng, hash_int, bits, hash_int_neighbors, hash_str,
          hash_str_neighbors) in cases:
         points = np.array([(lng, lat)], dtype=[('lng', 'f8'), ('lat', 'f8')])
-        hash = core.int64.encode(points, bits)
+        hash = geohash.core.int64.encode(points, bits)
         assert hash_int == hash
-        assert list(core.int64.neighbors(hash_int, bits)) == hash_int_neighbors
+        assert list(geohash.core.int64.neighbors(hash_int,
+                                                 bits)) == hash_int_neighbors
 
-        hash = core.string.encode(points, len(hash_str))
+        hash = geohash.core.string.encode(points, len(hash_str))
         assert hash_str == hash.astype("U")
-        assert list(
-            core.string.neighbors(hash_str).astype("U")) == hash_str_neighbors
+        assert list(geohash.core.string.neighbors(hash_str).astype(
+            "U")) == hash_str_neighbors
