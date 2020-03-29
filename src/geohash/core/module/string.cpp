@@ -1,163 +1,118 @@
-#include "geohash/base32.hpp"
-#include "geohash/int64.hpp"
 #include "geohash/string.hpp"
+#include "geohash/int64.hpp"
+#include <Eigen/Core>
+#include <pybind11/eigen.h>
+#include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
-namespace geohash::string {
+namespace py = pybind11;
 
-// Handle encoding/decoding in base32
-static const auto base32 = Base32();
-
-// ---------------------------------------------------------------------------
-auto Array::get_info(const pybind11::array& hashs, const ssize_t ndim)
-    -> pybind11::buffer_info {
-  auto info = hashs.request();
-  auto dtype = hashs.dtype();
-  switch (ndim) {
-    case 1:
-      if (info.ndim != 1) {
-        throw std::invalid_argument("hashs must be a one-dimensional array");
-      }
-      if (dtype.kind() != 'S') {
-        throw std::invalid_argument("hash must be a string array");
-      }
-      if (info.strides[0] > 12) {
-        throw std::invalid_argument("hash length must be within [1, 12]");
-      }
-      break;
-    default:
-      if (info.ndim != 2) {
-        throw std::invalid_argument("hashs must be a two-dimensional array");
-      }
-      if (info.strides[0] != hashs.shape(1) * info.strides[1] ||
-          dtype.kind() != 'S') {
-        throw std::invalid_argument("hash must be a string array");
-      }
-      if (info.strides[1] > 12) {
-        throw std::invalid_argument("hash length must be within [1, 12]");
-      }
-      break;
-  }
-  return info;
-}
-
-// ---------------------------------------------------------------------------
-auto encode(const Point& point, char* const buffer, const uint32_t precision)
-    -> void {
-  base32.encode(int64::encode(point, 5 * precision), buffer, precision);
-}
-
-// ---------------------------------------------------------------------------
-auto encode(const Eigen::Ref<const Eigen::Matrix<Point, -1, 1>>& points,
-            const uint32_t precision) -> pybind11::array {
-  auto array = Array(points.size(), precision);
-  auto buffer = array.buffer();
-
-  for (Eigen::Index ix = 0; ix < points.size(); ++ix) {
-    encode(points(ix), buffer, precision);
-    buffer += precision;
-  }
-  return array.pyarray();
-}
-
-// ---------------------------------------------------------------------------
-inline auto decode_bounding_box(const char* const hash, const size_t count,
-                                uint32_t* precision = nullptr) -> Box {
-  uint64_t integer_encoded;
-  uint32_t chars;
-  std::tie(integer_encoded, chars) = base32.decode(hash, count);
-  if (precision != nullptr) {
-    *precision = chars;
-  }
-  return int64::bounding_box(integer_encoded, 5 * chars);
-}
-
-// ---------------------------------------------------------------------------
-auto bounding_box(const char* const hash, const size_t count) -> Box {
-  return decode_bounding_box(hash, count);
-}
-
-// ---------------------------------------------------------------------------
-auto decode(const char* const hash, const size_t count, const bool round)
-    -> Point {
-  auto bbox = bounding_box(hash, count);
-  return round ? bbox.round() : bbox.center();
-}
-
-// ---------------------------------------------------------------------------
-auto decode(const pybind11::array& hashs, const bool round)
-    -> Eigen::Matrix<Point, -1, 1> {
-  auto info = Array::get_info(hashs, 1);
-  auto count = info.strides[0];
-  auto result = Eigen::Matrix<Point, -1, 1>(info.shape[0]);
-  auto ptr = static_cast<char*>(info.ptr);
-  for (auto ix = 0LL; ix < info.shape[0]; ++ix) {
-    result(ix) = decode(ptr, count, round);
-    ptr += count;
+// Parsing of the string defining a GeoHash.
+inline auto parse_str = [](const py::str& hash) -> auto {
+  auto result = std::string(hash);
+  if (result.length() < 1 || result.length() > 12) {
+    throw std::invalid_argument("Geohash length must be within [1, 12]");
   }
   return result;
+};
+
+// Checking the value defining the precision of a geohash.
+inline auto check_range(uint32_t precision) -> void {
+  if (precision < 1 || precision > 12) {
+    throw std::invalid_argument("precision must be within [1, 12]");
+  }
 }
 
-// ---------------------------------------------------------------------------
-auto neighbors(const char* const hash, const size_t count) -> pybind11::array {
-  uint64_t integer_encoded;
-  uint32_t precision;
-  std::tie(integer_encoded, precision) = base32.decode(hash, count);
-
-  const auto integers = int64::neighbors(integer_encoded, precision * 5);
-  auto array = Array(integers.size(), precision);
-  auto buffer = array.buffer();
-
-  for (auto ix = 0; ix < integers.size(); ++ix) {
-    base32.encode(integers(ix), buffer, precision);
-    buffer += precision;
-  }
-  return array.pyarray();
+void init_string(py::module& m) {
+  m.def(
+       "error",
+       [](const uint32_t& precision) -> py::tuple {
+         check_range(precision);
+         auto lat_lng_err = geohash::int64::error_with_precision(precision * 5);
+         return py::make_tuple(std::get<1>(lat_lng_err),
+                               std::get<0>(lat_lng_err));
+       },
+       py::arg("precision"),
+       "Returns the precision in longitude/latitude and degrees for the "
+       "given precision")
+      .def(
+          "encode",
+          [](const geohash::Point& point,
+             const uint32_t precision) -> py::handle {
+            auto result = std::array<char, 12>();
+            check_range(precision);
+            geohash::string::encode(point, result.data(), precision);
+            return PyBytes_FromStringAndSize(result.data(), precision);
+          },
+          py::arg("point"), py::arg("precision") = 12,
+          "Encode a point into geohash with the given precision")
+      .def(
+          "encode",
+          [](const Eigen::Ref<const Eigen::Matrix<geohash::Point, -1, 1>>&
+                 points,
+             const uint32_t precision) -> pybind11::array {
+            check_range(precision);
+            return geohash::string::encode(points, precision);
+          },
+          py::arg("points"), py::arg("precision") = 12,
+          "Encode points into geohash with the given precision")
+      .def(
+          "decode",
+          [](const py::str& hash, const bool round) -> geohash::Point {
+            auto buffer = parse_str(hash);
+            return geohash::string::decode(buffer.data(), buffer.length(),
+                                           round);
+          },
+          py::arg("hash"), py::arg("round") = false,
+          "Decode a hash into a spherical equatorial point. If round is true, "
+          "the coordinates of the points will be rounded to the accuracy "
+          "defined by the GeoHash.")
+      .def(
+          "decode",
+          [](const pybind11::array& hashs,
+             const bool round) -> Eigen::Matrix<geohash::Point, -1, 1> {
+            return geohash::string::decode(hashs, round);
+          },
+          py::arg("hashs"), py::arg("round") = false,
+          "Decode hashs into a spherical equatorial points. If round is true, "
+          "the coordinates of the points will be rounded to the accuracy "
+          "defined by the GeoHash.")
+      .def(
+          "bounding_box",
+          [](const py::str& hash) -> geohash::Box {
+            auto buffer = parse_str(hash);
+            return geohash::string::bounding_box(buffer.data(),
+                                                 buffer.length());
+          },
+          py::arg("hash"), "Returns the region encoded by the geohash.")
+      .def(
+          "bounding_boxes",
+          [](const std::optional<geohash::Box>& box,
+             const uint32_t precision) -> py::array {
+            check_range(precision);
+            return geohash::string::bounding_boxes(box, precision);
+          },
+          py::arg("box") = py::none(), py::arg("precision") = 1,
+          "Returns the region encoded by the geohash with the specified "
+          "precision.")
+      .def(
+          "neighbors",
+          [](const py::str& hash) {
+            auto buffer = parse_str(hash);
+            return geohash::string::neighbors(buffer.data(), buffer.length());
+          },
+          py::arg("box"),
+          "Returns all neighbors hash clockwise from north around northwest")
+      .def(
+          "grid_properties",
+          [](const geohash::Box& box,
+             const uint32_t precision) -> std::tuple<uint64_t, size_t, size_t> {
+            check_range(precision);
+            return geohash::int64::grid_properties(box, precision * 5);
+          },
+          py::arg("box") = py::none(), py::arg("precision") = 12,
+          "Returns the property of the grid covering the given box: geohash of "
+          "the minimum corner point, number of boxes in longitudes and "
+          "latitudes.");
 }
-
-// ---------------------------------------------------------------------------
-auto bounding_boxes(const std::optional<Box>& box, const uint32_t precision)
-    -> pybind11::array {
-  size_t lat_step;
-  size_t lng_step;
-  size_t size = 0;
-  uint64_t hash_sw;
-
-  // Number of bits
-  auto bits = precision * 5;
-
-  // Calculation of the number of elements constituting the grid
-  const auto boxes = box.value_or(Box({-180, -90}, {180, 90})).split();
-  for (const auto& item : boxes) {
-    std::tie(hash_sw, lng_step, lat_step) = int64::grid_properties(item, bits);
-    size += lat_step * lng_step;
-  }
-
-  // Grid resolution in degrees
-  const auto lng_lat_err = int64::error_with_precision(bits);
-
-  // Allocation of the vector storing the different codes of the matrix created
-  auto result = Array(size, precision);
-  auto buffer = result.buffer();
-
-  for (const auto& item : boxes) {
-    std::tie(hash_sw, lng_step, lat_step) = int64::grid_properties(item, bits);
-    const auto point_sw = int64::decode(hash_sw, bits, true);
-
-    for (size_t lat = 0; lat < lat_step; ++lat) {
-      const auto lat_shift = lat * std::get<1>(lng_lat_err);
-
-      for (size_t lng = 0; lng < lng_step; ++lng) {
-        const auto lng_shift = lng * std::get<0>(lng_lat_err);
-
-        base32.encode(
-            int64::encode({point_sw.lng + lng_shift, point_sw.lat + lat_shift},
-                          bits),
-            buffer, precision);
-        buffer += precision;
-      }
-    }
-  }
-  return result.pyarray();
-}
-
-}  // namespace geohash::string
