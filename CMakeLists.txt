@@ -9,7 +9,7 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
 endif()
 
 cmake_policy(SET CMP0048 NEW)
-project(geohash LANGUAGES CXX)
+project(geohash LANGUAGES C CXX)
 
 if (POLICY CMP0063)
   cmake_policy(SET CMP0063 NEW)
@@ -144,27 +144,16 @@ include_directories(${Boost_INCLUDE_DIRS})
 find_package(Eigen3 3.3.1 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-# set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
-# set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-# set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# zlib
+find_package(ZLIB REQUIRED)
+include_directories(${ZLIB_INCLUDE_DIRS})
 
-# set(can_use_assembler FALSE)
-
-# if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "x86_64")
-#    enable_language(ASM-ATT)
-#    if(CMAKE_ASM-ATT_COMPILER_WORKS)
-#       set(can_use_assembler TRUE)
-#       # set(mySrcs ${mySrcs} codec_i86.s)
-#    endif(CMAKE_ASM-ATT_COMPILER_WORKS)
-# endif()
-
-# # no assembler found
-# # if(not can_use_assembler)
-# #    set(mySrcs ${mySrcs} codec_generic.c)
-# # endif(not can_use_assembler)
-
+include_directories("third_party/unqlite")
+add_library(unqlite STATIC "third_party/unqlite/unqlite.c")
+target_compile_definitions(unqlite PUBLIC UNQLITE_ENABLE_THREADS)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 include_directories("src/geohash/core/include")
 pybind11_add_module(core ${SOURCES})
+target_link_libraries(core PRIVATE ${ZLIB_LIBRARIES} unqlite)
