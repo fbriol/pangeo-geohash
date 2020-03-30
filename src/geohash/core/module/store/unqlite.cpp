@@ -24,10 +24,16 @@ void init_store_unqlite(py::module& m) {
                     &unqlite_::Options::set_create_if_missing,
                     "If true, the database will be created if it is missing.");
 
-  py::class_<unqlite_::Database>(m, "Database", "Key/Value store")
+  py::class_<unqlite_::Database, std::shared_ptr<unqlite_::Database>>(
+      m, "Database", "Key/Value store")
       .def(py::init<std::string, std::optional<unqlite_::Options>>(),
            py::arg("filename"), py::arg("options") = py::none(),
            "Opening a database")
+      .def(py::pickle([](const unqlite_::Database& self)
+                          -> py::tuple { return self.getstate(); },
+                      [](const py::tuple& state) -> std::shared_ptr<unqlite_::Database> {
+                        return unqlite_::Database::setstate(state);
+                      }))
       .def("__setitem__", &unqlite_::Database::setitem, py::arg("key"),
            py::arg("value"))
       .def("__getitem__", &unqlite_::Database::getitem, py::arg("key"))

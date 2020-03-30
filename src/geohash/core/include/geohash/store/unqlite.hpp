@@ -56,16 +56,29 @@ class Options {
 class Database {
  public:
   // Default constructor
-  Database(const std::string& filename, const std::optional<Options>& options) {
-    auto opts = options.has_value() ? options.value() : Options();
-    auto mode = opts.get_create_if_missing() ? UNQLITE_OPEN_CREATE
-                                             : UNQLITE_OPEN_READWRITE;
-    compress_ = opts.get_compression_level();
-    check_rc(unqlite_open(&handle_, filename.c_str(), mode));
-  }
+  Database(std::string filename, const std::optional<Options>& options);
 
   // Destructor
   virtual ~Database();
+
+  // Copy constructor
+  Database(const Database&) = delete;
+
+  // Copy assignment operator
+  Database& operator=(const Database&) = delete;
+
+  // Move constructor
+  Database(const Database&&) = delete;
+
+  // Move assignment operator
+  Database& operator=(const Database&&) = delete;
+
+  // Get state of this instance
+  auto getstate() const -> pybind11::tuple;
+
+  // Create a new instance from the information saved in the "state" variable
+  static auto setstate(const pybind11::tuple& state)
+      -> std::shared_ptr<Database>;
 
   // Set the key/value pair, overwriting existing
   auto setitem(const pybind11::bytes& key, const pybind11::object& obj) const
@@ -121,6 +134,7 @@ class Database {
   }
 
  private:
+  std::string filename_;
   ::unqlite* handle_{nullptr};
   Pickle pickle_{};
   int compress_{5};

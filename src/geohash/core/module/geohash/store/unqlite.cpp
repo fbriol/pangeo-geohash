@@ -14,6 +14,16 @@ struct PyBytes {
 };
 
 // ---------------------------------------------------------------------------
+Database::Database(std::string filename, const std::optional<Options>& options)
+    : filename_(std::move(filename)) {
+  auto opts = options.has_value() ? options.value() : Options();
+  auto mode = opts.get_create_if_missing() ? UNQLITE_OPEN_CREATE
+                                           : UNQLITE_OPEN_READWRITE;
+  compress_ = opts.get_compression_level();
+  check_rc(unqlite_open(&handle_, filename.c_str(), mode));
+}
+
+// ---------------------------------------------------------------------------
 Database::~Database() {
   try {
     check_rc(unqlite_close(handle_));
@@ -82,6 +92,25 @@ auto Database::check_rc(const int rc) const -> void {
       break;
   }
   throw DatabaseError("Unknown error code. (" + std::to_string(rc) + ")");
+}
+
+// ---------------------------------------------------------------------------
+auto Database::getstate() const -> pybind11::tuple {
+  if (filename_ == ":mem:") {
+    throw std::runtime_error("Cannot pickle in-memory databases");
+  }
+  return pybind11::make_tuple(filename_, compress_);
+}
+
+// ---------------------------------------------------------------------------
+auto Database::setstate(const pybind11::tuple& state)
+    -> std::shared_ptr<Database> {
+  if (pybind11::len(state) != 2) {
+    throw std::invalid_argument("invalid state");
+  }
+  auto options = Options();
+  options.set_compression_level(state[1].cast<int>());
+  return std::make_shared<Database>(state[0].cast<std::string>(), options);
 }
 
 // ---------------------------------------------------------------------------

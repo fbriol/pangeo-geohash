@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class DatabaseError(Exception):
@@ -43,19 +43,25 @@ class Database:
                  options: Optional[Options] = None) -> None:
         ...
 
+    def __getstate__(self) -> Tuple:
+        ...
+
+    def __setstate__(self, state: Tuple) -> None:
+        ...
+
     def __contains__(self, key: bytes) -> bool:
         ...
 
     def __delitem__(self, key: bytes) -> None:
         ...
 
-    def __getitem__(self, key: bytes) -> list:
+    def __getitem__(self, key: bytes) -> List[Any]:
         ...
 
     def __len__(self) -> int:
         ...
 
-    def __setitem__(self, key: bytes, value: object) -> None:
+    def __setitem__(self, key: bytes, value: Any) -> None:
         ...
 
     def clear(self) -> None:
@@ -67,10 +73,10 @@ class Database:
     def error_log(self) -> str:
         ...
 
-    def extend(self, map: dict) -> None:
+    def extend(self, map: Dict[bytes, Any]) -> None:
         ...
 
-    def keys(self) -> list:
+    def keys(self) -> List[bytes]:
         ...
 
     def pop(self, key: object, default: object = None) -> object:
@@ -85,8 +91,8 @@ class Database:
     def setdefault(self, key: object, default: object = None) -> object:
         ...
 
-    def update(self, map: dict) -> None:
+    def update(self, map: Dict[bytes, Any]) -> None:
         ...
 
-    def values(self, keys: Optional[list] = None) -> list:
+    def values(self, keys: Optional[List[bytes]] = None) -> List[Any]:
         ...
