@@ -273,7 +273,7 @@ auto Database::clear() const -> void {
          unqlite_kv_cursor_valid_entry(cursor) != 0;
          unqlite_kv_cursor_next_entry(cursor)) {
       check_rc(unqlite_kv_cursor_key(cursor, nullptr, &key_len));
-      auto key = std::string(nullptr, key_len + 1);
+      auto key = std::string(key_len + 1, '\0');
       check_rc(unqlite_kv_cursor_key(cursor, key.data(), &key_len));
       keys.emplace_back(key);
     }

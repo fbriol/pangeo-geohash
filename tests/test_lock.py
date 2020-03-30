@@ -11,18 +11,19 @@ def test_lock_thread():
     assert not lck.lock.locked()
 
 
-def lock_process(path: str) -> None:
-    lck = geohash.lock.ProcessSynchronizer(path)
-    assert not os.path.exists(path)
-    assert not lck.lock.acquired
-    with lck:
-        assert lck.lock.acquired
-        assert os.path.exists(path)
-    assert not os.path.exists(path)
-
-
-def test_lock_process():
+def test_lock_process() -> None:
     path = tempfile.NamedTemporaryFile().name
     assert not os.path.exists(path)
-    lock_process(path)
+    lck = geohash.lock.ProcessSynchronizer(path)
+    assert not os.path.exists(path)
+    assert not lck.lock.locked()
+    with lck:
+        assert lck.lock.locked()
+        lck2 = geohash.lock.ProcessSynchronizer(path, timeout=0.5)
+        try:
+            with lck2:
+                assert False
+        except geohash.lock.LockError:
+            pass
+        assert os.path.exists(path)
     assert not os.path.exists(path)
