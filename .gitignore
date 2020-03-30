@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Generated header file
+src/geohash/core/include/unqlite.h
