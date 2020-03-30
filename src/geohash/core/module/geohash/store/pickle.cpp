@@ -1,6 +1,6 @@
 #include "geohash/store/pickle.hpp"
-#include <zlib.h>
 #include <string>
+#include <zlib.h>
 
 namespace geohash::store {
 
@@ -10,20 +10,20 @@ static auto deflate(const pybind11::bytes& data, const int level)
   char* source;
   ssize_t source_len;
 
-  if (PyBytes_AsStringAndSize(data.ptr(), &source, &source_len)) {
+  if (PyBytes_AsStringAndSize(data.ptr(), &source, &source_len) != 0) {
     throw std::runtime_error("unable to extract bytes contents");
   }
 
   // Allocation of the result buffer.
   auto dest_len = compressBound(source_len);
   auto result = pybind11::reinterpret_steal<pybind11::bytes>(
-      PyBytes_FromStringAndSize(nullptr, dest_len + sizeof(unsigned long)));
+      PyBytes_FromStringAndSize(nullptr, dest_len + sizeof(int64_t)));
   if (result.ptr() == nullptr) {
     throw std::runtime_error("out of memory");
   }
 
   // Fill the buffer with 0
-  auto dest = PyBytes_AS_STRING(result.ptr());
+  auto dest = PyBytes_AsString(result.ptr());
   memset(dest, 0, dest_len + sizeof(unsigned long));
 
   {
@@ -41,7 +41,7 @@ static auto deflate(const pybind11::bytes& data, const int level)
     throw pybind11::error_already_set();
   }
   // The returned bytes is suffixed by the size of the decompressed data
-  memcpy(PyBytes_AS_STRING(result.ptr()) + dest_len, &source_len,
+  memcpy(PyBytes_AsString(result.ptr()) + dest_len, &source_len,
          sizeof(unsigned long));
   return result;
 }
@@ -54,16 +54,16 @@ static auto inflate(const pybind11::bytes& data, unsigned long dest_len)
   if (result.ptr() == nullptr) {
     throw std::runtime_error("out of memory");
   }
-  auto dest = PyBytes_AS_STRING(result.ptr());
+  auto dest = PyBytes_AsString(result.ptr());
   {
     // auto gil = pybind11::gil_scoped_release();
-    auto rc =
-        uncompress(reinterpret_cast<Bytef*>(dest), &dest_len,
-                   reinterpret_cast<Bytef*>(PyBytes_AS_STRING(data.ptr())),
-                   pybind11::len(data) - sizeof(unsigned long));
+    auto rc = uncompress(reinterpret_cast<Bytef*>(dest), &dest_len,
+                         reinterpret_cast<Bytef*>(PyBytes_AsString(data.ptr())),
+                         pybind11::len(data) - sizeof(unsigned long));
     if (rc == Z_MEM_ERROR) {
       throw std::runtime_error("out of memory");
-    } else if (rc != Z_OK) {
+    }
+    if (rc != Z_OK) {
       throw std::runtime_error("data corrupted");
     }
   }
@@ -77,7 +77,7 @@ auto Pickle::dumps(const pybind11::object& obj, const int compress) const
     throw std::invalid_argument("compress must be in [0, 9]");
   }
   pybind11::bytes data = dumps_(obj, -1);
-  if (compress) {
+  if (compress != 0) {
     return deflate(data, compress);
   }
 
@@ -88,8 +88,7 @@ auto Pickle::dumps(const pybind11::object& obj, const int compress) const
   if (suffix.ptr() == nullptr) {
     throw std::runtime_error("out of memory");
   }
-  memset(static_cast<char*>(PyBytes_AS_STRING(suffix.ptr())), 0,
-         sizeof(unsigned long));
+  memset(PyBytes_AsString(suffix.ptr()), 0, sizeof(unsigned long));
   PyBytes_Concat(&data.ptr(), suffix.ptr());
   if (data.ptr() == nullptr) {
     throw pybind11::error_already_set();
@@ -106,7 +105,7 @@ auto Pickle::loads(const pybind11::bytes& data) const -> pybind11::object {
 
   // Get the size of the inflated data.
   unsigned long dest_len;
-  auto ptr = PyBytes_AS_STRING(data.ptr());
+  auto ptr = PyBytes_AsString(data.ptr());
   memcpy(&dest_len, ptr + data_len - sizeof(unsigned long),
          sizeof(unsigned long));
 

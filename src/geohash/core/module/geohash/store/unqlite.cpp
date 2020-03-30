@@ -6,8 +6,8 @@ struct PyBytes {
   char* ptr;
   Py_ssize_t len;
 
-  PyBytes(PyObject* value) {
-    if (PyBytes_AsStringAndSize(value, &ptr, &len)) {
+  explicit PyBytes(PyObject* value) {
+    if (PyBytes_AsStringAndSize(value, &ptr, &len) != 0) {
       throw std::runtime_error("unable to extract bytes contents");
     }
   }
@@ -20,7 +20,7 @@ Database::Database(std::string filename, const std::optional<Options>& options)
   auto mode = opts.get_create_if_missing() ? UNQLITE_OPEN_CREATE
                                            : UNQLITE_OPEN_READWRITE;
   compress_ = opts.get_compression_level();
-  check_rc(unqlite_open(&handle_, filename.c_str(), mode));
+  check_rc(unqlite_open(&handle_, filename_.c_str(), mode));
 }
 
 // ---------------------------------------------------------------------------
@@ -33,7 +33,7 @@ Database::~Database() {
 }
 
 // ---------------------------------------------------------------------------
-auto Database::check_rc(const int rc) const -> void {
+auto Database::check_rc(const int rc) -> void {
   // No errors detected, we have nothing more to do.
   if (rc == UNQLITE_OK) {
     return;
@@ -151,10 +151,11 @@ auto Database::getitem(const pybind11::bytes& key) const -> pybind11::list {
   const auto cxx_key = PyBytes_AsString(key.ptr());
   unqlite_int64 size;
 
-  auto rc = unqlite_kv_fetch(handle_, cxx_key, -1, NULL, &size);
+  auto rc = unqlite_kv_fetch(handle_, cxx_key, -1, nullptr, &size);
   if (rc == UNQLITE_NOTFOUND) {
     return pybind11::list();
-  } else if (rc != UNQLITE_OK) {
+  }
+  if (rc != UNQLITE_OK) {
     check_rc(rc);
   }
   auto data = pybind11::reinterpret_steal<pybind11::bytes>(
@@ -222,7 +223,7 @@ auto Database::keys() const -> pybind11::list {
 
   try {
     for (unqlite_kv_cursor_first_entry(cursor);
-         unqlite_kv_cursor_valid_entry(cursor);
+         unqlite_kv_cursor_valid_entry(cursor) != 0;
          unqlite_kv_cursor_next_entry(cursor)) {
       check_rc(unqlite_kv_cursor_key(cursor, nullptr, &key_len));
 
@@ -248,7 +249,7 @@ auto Database::len() const -> size_t {
 
   try {
     for (unqlite_kv_cursor_first_entry(cursor);
-         unqlite_kv_cursor_valid_entry(cursor);
+         unqlite_kv_cursor_valid_entry(cursor) != 0;
          unqlite_kv_cursor_next_entry(cursor)) {
       ++result;
     }
@@ -269,10 +270,10 @@ auto Database::clear() const -> void {
   check_rc(unqlite_kv_cursor_init(handle_, &cursor));
   try {
     for (unqlite_kv_cursor_first_entry(cursor);
-         unqlite_kv_cursor_valid_entry(cursor);
+         unqlite_kv_cursor_valid_entry(cursor) != 0;
          unqlite_kv_cursor_next_entry(cursor)) {
       check_rc(unqlite_kv_cursor_key(cursor, nullptr, &key_len));
-      auto key = std::string(0, key_len + 1);
+      auto key = std::string(nullptr, key_len + 1);
       check_rc(unqlite_kv_cursor_key(cursor, key.data(), &key_len));
       keys.emplace_back(key);
     }
@@ -294,7 +295,8 @@ auto Database::delitem(const pybind11::bytes& key) const -> void {
   int rc = unqlite_kv_delete(handle_, PyBytes_AsString(key.ptr()), -1);
   if (rc == UNQLITE_NOTFOUND) {
     throw std::out_of_range(PyBytes_AsString(key.ptr()));
-  } else if (rc != UNQLITE_OK) {
+  }
+  if (rc != UNQLITE_OK) {
     check_rc(rc);
   }
 }
@@ -312,7 +314,8 @@ auto Database::contains(const pybind11::bytes& key) const -> bool {
                              &size);
   if (rc == UNQLITE_NOTFOUND) {
     return false;
-  } else if (rc == UNQLITE_OK) {
+  }
+  if (rc == UNQLITE_OK) {
     return true;
   }
   check_rc(rc);

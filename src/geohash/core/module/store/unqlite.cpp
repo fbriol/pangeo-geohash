@@ -29,11 +29,13 @@ void init_store_unqlite(py::module& m) {
       .def(py::init<std::string, std::optional<unqlite_::Options>>(),
            py::arg("filename"), py::arg("options") = py::none(),
            "Opening a database")
-      .def(py::pickle([](const unqlite_::Database& self)
-                          -> py::tuple { return self.getstate(); },
-                      [](const py::tuple& state) -> std::shared_ptr<unqlite_::Database> {
-                        return unqlite_::Database::setstate(state);
-                      }))
+      .def(py::pickle(
+          [](const unqlite_::Database& self) -> py::tuple {
+            return self.getstate();
+          },
+          [](const py::tuple& state) -> std::shared_ptr<unqlite_::Database> {
+            return unqlite_::Database::setstate(state);
+          }))
       .def("__setitem__", &unqlite_::Database::setitem, py::arg("key"),
            py::arg("value"))
       .def("__getitem__", &unqlite_::Database::getitem, py::arg("key"))
@@ -58,21 +60,23 @@ void init_store_unqlite(py::module& m) {
            "Read all values from the database for the keys provided")
       .def(
           "setdefault",
-          [](const unqlite_::Database& self, const py::object& key,
-             const py::object& default_) -> py::object {
+          [](const unqlite_::Database& /* self */, const py::object& /* key */,
+             const py::object &
+             /* default_ */) -> py::object {
             PyErr_SetNone(PyExc_NotImplementedError);
             throw pybind11::error_already_set();
           },
           py::arg("key"), py::arg("default") = py::none())
       .def(
           "pop",
-          [](const unqlite_::Database& self, const py::object& key,
-             const py::object& default_) -> py::object {
+          [](const unqlite_::Database& /* self */, const py::object& /* key */,
+             const py::object &
+             /* default_ */) -> py::object {
             PyErr_SetNone(PyExc_NotImplementedError);
             throw pybind11::error_already_set();
           },
           py::arg("key"), py::arg("default") = py::none())
-      .def("popitem", [](const unqlite_::Database& self) -> py::tuple {
+      .def("popitem", [](const unqlite_::Database & /*self */) -> py::tuple {
         PyErr_SetNone(PyExc_NotImplementedError);
         throw pybind11::error_already_set();
       });

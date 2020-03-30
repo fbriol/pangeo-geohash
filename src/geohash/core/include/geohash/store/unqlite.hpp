@@ -1,8 +1,8 @@
 #pragma once
 #include "pickle.hpp"
-#include <unqlite.h>
-#include <string>
 #include <pybind11/pybind11.h>
+#include <string>
+#include <unqlite.h>
 
 namespace geohash::store::unqlite {
 
@@ -41,11 +41,15 @@ class Options {
     }
     compression_level_ = value;
   }
-  auto get_compression_level() const -> int { return compression_level_; }
+  [[nodiscard]] auto get_compression_level() const -> int {
+    return compression_level_;
+  }
 
   // If true, the database will be created if it is missing.
   auto set_create_if_missing(bool value) -> void { create_if_missing_ = value; }
-  auto get_create_if_missing() const -> bool { return create_if_missing_; }
+  [[nodiscard]] auto get_create_if_missing() const -> bool {
+    return create_if_missing_;
+  }
 
  private:
   int compression_level_{5};
@@ -65,16 +69,16 @@ class Database {
   Database(const Database&) = delete;
 
   // Copy assignment operator
-  Database& operator=(const Database&) = delete;
+  auto operator=(const Database&) -> Database& = delete;
 
   // Move constructor
   Database(const Database&&) = delete;
 
   // Move assignment operator
-  Database& operator=(const Database&&) = delete;
+  auto operator=(const Database &&) -> Database& = delete;
 
   // Get state of this instance
-  auto getstate() const -> pybind11::tuple;
+  [[nodiscard]] auto getstate() const -> pybind11::tuple;
 
   // Create a new instance from the information saved in the "state" variable
   static auto setstate(const pybind11::tuple& state)
@@ -93,10 +97,11 @@ class Database {
 
   // Return the item of the database with key key. Return an empty list if key
   // is not in the database.
-  auto getitem(const pybind11::bytes& key) const -> pybind11::list;
+  [[nodiscard]] auto getitem(const pybind11::bytes& key) const
+      -> pybind11::list;
 
   // Read all values from the database for the keys provided
-  auto values(const std::optional<pybind11::list>& keys) const
+  [[nodiscard]] auto values(const std::optional<pybind11::list>& keys) const
       -> pybind11::list;
 
   // Remove the key from the database. Raises a KeyError if key is not int the
@@ -104,16 +109,16 @@ class Database {
   auto delitem(const pybind11::bytes& key) const -> void;
 
   // Return a list containing all the keys from the database
-  auto keys() const -> pybind11::list;
+  [[nodiscard]] auto keys() const -> pybind11::list;
 
   // Remove all items from the database
   auto clear() const -> void;
 
   // Return the number of items in the database
-  auto len() const -> size_t;
+  [[nodiscard]] auto len() const -> size_t;
 
   // Return true if the database has a key key, else false.
-  auto contains(const pybind11::bytes& key) const -> bool;
+  [[nodiscard]] auto contains(const pybind11::bytes& key) const -> bool;
 
   // Commit all changes to the database
   auto commit() const -> void;
@@ -122,7 +127,7 @@ class Database {
   auto rollback() const -> void;
 
   // Read error log
-  auto error_log() const -> std::string {
+  [[nodiscard]] auto error_log() const -> std::string {
     const char* buffer;
     int length;
 
@@ -139,7 +144,7 @@ class Database {
   Pickle pickle_{};
   int compress_{5};
 
-  auto check_rc(int rc) const -> void;
+  static auto check_rc(int rc) -> void;
 };
 
 }  // namespace geohash::store::unqlite
