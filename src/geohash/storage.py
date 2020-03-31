@@ -60,7 +60,7 @@ class MutableMapping:
         ...
 
 
-class UnQlite(MutableMapping, unqlite.Database):
+class UnQlite(unqlite.Database, MutableMapping):
     """Storage class using SQLite.
 
     Args:
@@ -68,7 +68,8 @@ class UnQlite(MutableMapping, unqlite.Database):
         option (unqlite.Options, optional): options to control the behavior of
             the database
     """
-    def __init__(self, path: str, options: Optional[unqlite.Options]) -> None:
+    def __init__(self, path: str,
+                 options: Optional[unqlite.Options] = None) -> None:
         # normalize path
         if path != ':mem:':
             path = os.path.abspath(path)

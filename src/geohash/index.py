@@ -4,9 +4,11 @@ Geogrophic Index
 """
 from typing import Any, Dict, Iterator, List, Optional
 import json
+import numpy
 from . import lock
 from . import core
 from . import storage
+from . import core
 from .core import string
 
 
@@ -46,13 +48,18 @@ class GeoHash:
         """Definition of index properties"""
         if b'.properties' in self._store:
             raise RuntimeError("index already initialized")
-        self._store[b'.properties'] = json.dumps(
-            {'precision': self._precision})
+        with self._store:
+            self._store[b'.properties'] = json.dumps(
+                {'precision': self._precision})
 
     @staticmethod
     def get_properties(store) -> Dict[str, Any]:
         """Reading index properties"""
-        return json.loads(store[b'.properties'])
+        return json.loads(store[b'.properties'].pop())
+
+    def encode(self, points: numpy.ndarray) -> numpy.ndarray:
+        """Encode points into geohash with the given precision"""
+        return string.encode(points, precision=self._precision)
 
     def update(self, data: Dict[bytes, object]) -> None:
         """Update the index with the key/value pairs from data, overwriting
@@ -68,11 +75,13 @@ class GeoHash:
             with self._store:
                 self._store.extend(data)
 
-    def box(self, box: core.Box) -> Iterator[List[Any]]:
+    def box(self, box: core.Box) -> List[Any]:
         """Selection of all data within the defined geographical area"""
-        return self._store.values(
-            string.bounding_boxes(box,
-                                  precision=self._precision))  # type: ignore
+        result = []
+        values = self._store.values(
+            list(string.bounding_boxes(box, precision=self._precision)))
+        tuple(map(result.extend, values))
+        return result
 
     def __len__(self):
         return len(self._store) - 1
@@ -88,9 +97,6 @@ def init_geohash(store: storage.MutableMapping,
     """
     result = GeoHash(store, precision, synchronizer)
     result.set_properties()
-    result.update(
-        dict(
-            (code, []) for code in string.bounding_boxes(precision=precision)))
     return result
 
 

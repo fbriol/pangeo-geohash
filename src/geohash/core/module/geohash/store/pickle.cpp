@@ -28,7 +28,6 @@ static auto deflate(const pybind11::bytes& data, const int level)
 
   {
     auto gil = pybind11::gil_scoped_release();
-
     // Compress the input data
     if (compress2(reinterpret_cast<Bytef*>(dest), &dest_len,
                   reinterpret_cast<Bytef*>(source), source_len,
@@ -56,7 +55,8 @@ static auto inflate(const pybind11::bytes& data, unsigned long dest_len)
   }
   auto dest = PyBytes_AsString(result.ptr());
   {
-    // auto gil = pybind11::gil_scoped_release();
+    auto gil = pybind11::gil_scoped_release();
+    // Uncompress data
     auto rc = uncompress(reinterpret_cast<Bytef*>(dest), &dest_len,
                          reinterpret_cast<Bytef*>(PyBytes_AsString(data.ptr())),
                          pybind11::len(data) - sizeof(unsigned long));
