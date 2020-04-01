@@ -48,9 +48,8 @@ class GeoHash:
         """Definition of index properties"""
         if b'.properties' in self._store:
             raise RuntimeError("index already initialized")
-        with self._store:
-            self._store[b'.properties'] = json.dumps(
-                {'precision': self._precision})
+        self._store[b'.properties'] = json.dumps(
+            {'precision': self._precision})
 
     @staticmethod
     def get_properties(store) -> Dict[str, Any]:
@@ -65,15 +64,13 @@ class GeoHash:
         """Update the index with the key/value pairs from data, overwriting
         existing keys."""
         with self._synchronizer:
-            with self._store:
-                self._store.update(data)
+            self._store.update(data)
 
     def extend(self, data: Dict[bytes, Any]) -> None:
         """Update the index with the key/value pairs from data, appending
         existing keys with the new data."""
         with self._synchronizer:
-            with self._store:
-                self._store.extend(data)
+            self._store.extend(data)
 
     def box(self, box: core.Box) -> List[Any]:
         """Selection of all data within the defined geographical area"""

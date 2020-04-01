@@ -13,12 +13,17 @@ class Pickle {
         loads_(pickle_.attr("loads")) {}
 
   // Return the pickled representation of the object obj as a bytes object
-  [[nodiscard]] auto dumps(const pybind11::object& obj, int compress) const
-      -> pybind11::bytes;
+  [[nodiscard]] inline auto dumps(const pybind11::object& obj) const
+      -> pybind11::bytes {
+    return dumps_(obj, -1);
+  }
+
   // Return the reconstituted object hierarchy of the pickled representation
   // bytes_object of an object.
-  [[nodiscard]] auto loads(const pybind11::bytes& data) const
-      -> pybind11::object;
+  [[nodiscard]] inline auto loads(const pybind11::bytes& bytes_object) const
+      -> pybind11::object {
+    return loads_(bytes_object);
+  }
 
  private:
   pybind11::module pickle_;

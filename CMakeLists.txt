@@ -27,6 +27,7 @@ endif ()
 set(
   CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11/tools;"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
   "${CMAKE_MODULE_PATH}"
 )
 
@@ -144,6 +145,9 @@ include_directories(${Boost_INCLUDE_DIRS})
 find_package(Eigen3 3.3.1 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
+# Snappy
+find_package(Snappy REQUIRED)
+
 # leveldb
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/leveldb)
 set_target_properties(leveldb PROPERTIES COMPILE_FLAGS "-fPIC")
@@ -154,4 +158,5 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 include_directories("src/geohash/core/include")
 pybind11_add_module(core ${SOURCES})
-target_link_libraries(core PRIVATE leveldb)
+set_target_properties(core PROPERTIES LINK_FLAGS "-L${SNAPPY_LIBRARY_DIR}")
+target_link_libraries(core PRIVATE leveldb ${SNAPPY_LIBRARIES})
