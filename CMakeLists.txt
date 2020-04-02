@@ -31,6 +31,9 @@ set(
   "${CMAKE_MODULE_PATH}"
 )
 
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
 # By default, build type is set to release, with debugging information.
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE RELWITHDEBINFO)
@@ -153,10 +156,15 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/leveldb)
 set_target_properties(leveldb PROPERTIES COMPILE_FLAGS "-fPIC")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/leveldb)
 
+# unqlite
+add_library(unqlite STATIC "third_party/unqlite/unqlite.c")
+target_compile_definitions(unqlite PUBLIC UNQLITE_ENABLE_THREADS)
+set_target_properties(unqlite PROPERTIES COMPILE_FLAGS "-fPIC")
+
 # core module
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 include_directories("src/geohash/core/include")
 pybind11_add_module(core ${SOURCES})
 set_target_properties(core PROPERTIES LINK_FLAGS "-L${SNAPPY_LIBRARY_DIR}")
-target_link_libraries(core PRIVATE leveldb ${SNAPPY_LIBRARIES})
+target_link_libraries(core PUBLIC leveldb unqlite ${SNAPPY_LIBRARIES})

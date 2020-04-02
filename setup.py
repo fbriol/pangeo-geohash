@@ -5,6 +5,7 @@ import pathlib
 import platform
 import subprocess
 import os
+import re
 import sys
 import sysconfig
 import setuptools
@@ -21,6 +22,24 @@ if not (MAJOR >= 3 and MINOR >= 6):
 
 # Working directory
 WORKING_DIRECTORY = pathlib.Path(__file__).parent.absolute()
+
+
+def patch_unqlite(source: pathlib.Path, target: pathlib.Path):
+    """Patch unqlite to enable compilation with C++"""
+    path = target.joinpath(source.name)
+    if path.exists():
+        return
+
+    pattern = re.compile(r'^(\s+)(pgno\s+pgno;)\s{2}(\s+.*)$').search
+    with open(source, "r") as stream:
+        lines = stream.readlines()
+    for ix, line in enumerate(lines):
+        m = pattern(line)
+        if m is not None:
+            lines[ix] = m.group(1) + "::" + m.group(2) + m.group(3) + "\n"
+
+    with open(path, "w") as stream:
+        stream.writelines(lines)
 
 
 def patch_leveldb():
@@ -182,6 +201,11 @@ class BuildExt(setuptools.command.build_ext.build_ext):
 
         # patch leveldb
         patch_leveldb()
+
+        # patch unqlite
+        patch_unqlite(
+            WORKING_DIRECTORY.joinpath("third_party", "unqlite", "unqlite.h"),
+            WORKING_DIRECTORY.joinpath("src", "geohash", "core", "include"))
 
         cfg = 'Debug' if self.debug else 'Release'
 

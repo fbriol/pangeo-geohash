@@ -1,7 +1,7 @@
-#include "geohash/store/pickle.hpp"
+#include "geohash/storage/pickle.hpp"
 #include <pybind11/pybind11.h>
 
-namespace store = geohash::store;
+namespace store = geohash::storage;
 namespace py = pybind11;
 
 void init_store_pickle(py::module& m) {

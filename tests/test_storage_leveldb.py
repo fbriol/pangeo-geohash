@@ -1,14 +1,14 @@
 import os
 import tempfile
 import shutil
-import geohash.core.store
-import geohash.core.string
+from geohash.core import storage
+from geohash.core import string
 
 
 def test_interface():
     target = tempfile.NamedTemporaryFile().name
     try:
-        handler = geohash.core.store.LevelDB(target)
+        handler = storage.leveldb.Database(target)
         assert len(handler) == 0
         assert handler[b'0'] == []
         for item in range(256):
@@ -49,15 +49,15 @@ def test_interface():
 
 
 def test_big_data():
-    data = dict((key, ["#" * 256] * 10)
-                for key in geohash.core.string.bounding_boxes(precision=3))
+    data = dict(
+        (key, ["#" * 256] * 10) for key in string.bounding_boxes(precision=3))
     subsample = list(data.keys())[256:512]
     path = tempfile.NamedTemporaryFile().name
     try:
-        handler = geohash.core.store.LevelDB(path)
+        handler = storage.leveldb.Database(path)
         handler.extend(data)
-        data = dict((key, "#" * 256)
-                    for key in geohash.core.string.bounding_boxes(precision=3))
+        data = dict(
+            (key, "#" * 256) for key in string.bounding_boxes(precision=3))
         handler.extend(data)
         for item in handler.values(subsample):
             assert len(item) == 11
@@ -65,10 +65,11 @@ def test_big_data():
             assert item[0] == "#" * 256
 
         try:
-            geohash.core.store.LevelDB(path)
+            storage.leveldb.Database(path)
             assert False
-        except RuntimeError:
+        except storage.leveldb.IOError:
             pass
+        assert len(handler[b'000']) == 11
 
     finally:
         shutil.rmtree(path, ignore_errors=True)

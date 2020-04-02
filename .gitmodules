@@ -4,3 +4,6 @@
 [submodule "third_party/leveldb"]
 	path = third_party/leveldb
 	url = https://github.com/google/leveldb.git
+[submodule "third_party/unqlite"]
+	path = third_party/unqlite
+	url = https://github.com/symisc/unqlite.git

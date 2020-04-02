@@ -4,9 +4,10 @@ Index storage support
 """
 from typing import (Any, Dict, Iterable, Iterator, List, Mapping,
                     MutableMapping, Optional, Tuple, Union)
+import weakref
 import abc
 import os
-from .core.store import unqlite
+from .core import storage
 
 
 class MutableMapping:
@@ -60,26 +61,44 @@ class MutableMapping:
         ...
 
 
-class UnQlite(unqlite.Database, MutableMapping):
-    """Storage class using SQLite.
+# class Singleton(type):
+#     """Singleton meta class"""
+#     _instances = weakref.WeakValueDictionary()
 
-    Args:
-        path (str): Location of database file.
-        option (unqlite.Options, optional): options to control the behavior of
-            the database
-    """
-    def __init__(self, path: str,
-                 options: Optional[unqlite.Options] = None) -> None:
-        # normalize path
-        if path != ':mem:':
-            path = os.path.abspath(path)
-        super().__init__(path, options)
+#     def __call__(cls, *args, **kwargs):
+#         if cls not in cls._instances:
+#             # This variable declaration is required to force a
+#             # strong reference on the instance.
+#             instance = super(Singleton, cls).__call__(*args, **kwargs)
+#             cls._instances[cls] = instance
+#         return cls._instances[cls]
 
-    def __enter__(self) -> 'UnQlite':
-        return self
 
-    def __exit__(self, type, value, tb):
-        self.commit()
+# class LevelDB(storage.leveldb.Database, metaclass=Singleton):
+#     def __init__(self, *args, **kwargs):
+#         pass
 
-    def __iter__(self):
-        return self.keys()
+
+# class UnQlite(unqlite.Database, MutableMapping):
+#     """Storage class using SQLite.
+
+#     Args:
+#         path (str): Location of database file.
+#         option (unqlite.Options, optional): options to control the behavior of
+#             the database
+#     """
+#     def __init__(self, path: str,
+#                  options: Optional[unqlite.Options] = None) -> None:
+#         # normalize path
+#         if path != ':mem:':
+#             path = os.path.abspath(path)
+#         super().__init__(path, options)
+
+#     def __enter__(self) -> 'UnQlite':
+#         return self
+
+#     def __exit__(self, type, value, tb):
+#         self.commit()
+
+#     def __iter__(self):
+#         return self.keys()

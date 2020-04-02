@@ -1,7 +1,7 @@
 #pragma once
 #include <pybind11/pybind11.h>
 
-namespace geohash::store {
+namespace geohash::storage {
 
 // Python object serialization with automatic compression
 class Pickle {
@@ -31,4 +31,4 @@ class Pickle {
   pybind11::object loads_;
 };
 
-}  // namespace geohash::store
+}  // namespace geohash::storage
