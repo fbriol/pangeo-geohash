@@ -1,6 +1,4 @@
 import pickle
-import struct
-import zlib
 from geohash.core import storage
 
 

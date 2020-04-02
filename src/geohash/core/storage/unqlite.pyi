@@ -1,23 +1,19 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 
-class CorruptionError(RuntimeError):
+class DatabaseError(Exception):
     ...
 
 
-class IOError(OSError):
+class LockError(Exception):
     ...
 
 
-class InvalidArgumentError(ValueError):
+class OperationalError(Exception):
     ...
 
 
-class NotFoundError(KeyError):
-    ...
-
-
-class NotSupportedError(Exception):
+class ProgrammingError(Exception):
     ...
 
 
@@ -26,13 +22,7 @@ class Database:
                  name: str,
                  create_if_missing: bool = True,
                  error_if_exists: bool = False,
-                 enable_compression: bool = True,
-                 write_buffer_size: Optional[int] = None,
-                 max_open_files: Optional[int] = None,
-                 lru_cache_size: Optional[int] = None,
-                 block_size: Optional[int] = None,
-                 block_restart_interval: Optional[int] = None,
-                 max_file_size: Optional[int] = None) -> None:
+                 enable_compression: bool = True) -> None:
         ...
 
     def __contains__(self, key: bytes) -> bool:
@@ -47,16 +37,25 @@ class Database:
     def __len__(self) -> int:
         ...
 
-    def __setitem__(self, key: bytes, value: object) -> None:
+    def __setitem__(self, key: bytes, value: Any) -> None:
         ...
 
     def clear(self) -> None:
+        ...
+
+    def commit(self) -> None:
+        ...
+
+    def error_log(self) -> str:
         ...
 
     def extend(self, map: Dict[bytes, Any]) -> None:
         ...
 
     def keys(self) -> List[bytes]:
+        ...
+
+    def rollback(self) -> None:
         ...
 
     def update(self, map: Dict[bytes, Any]) -> None:

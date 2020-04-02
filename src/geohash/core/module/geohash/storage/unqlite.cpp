@@ -124,6 +124,9 @@ static auto compress(const pybind11::bytes& bytes) -> pybind11::bytes {
 // ---------------------------------------------------------------------------
 static auto uncompress(const pybind11::bytes& bytes) -> pybind11::bytes {
   auto slice = Slice(bytes);
+  if (!snappy::IsValidCompressedBuffer(slice.ptr, slice.len)) {
+    return bytes;
+  }
   auto uncompressed_len = size_t(0);
   if (!snappy::GetUncompressedLength(slice.ptr, slice.len, &uncompressed_len)) {
     return bytes;

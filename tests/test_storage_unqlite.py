@@ -1,14 +1,14 @@
 import tempfile
 import shutil
 import pytest
-from geohash.core.storage import leveldb
+from geohash.core.storage import unqlite
 from geohash.core import string
 
 
 def test_interface():
     target = tempfile.NamedTemporaryFile().name
     try:
-        handler = leveldb.Database(target)
+        handler = unqlite.Database(target)
 
         # __len__
         assert len(handler) == 0
@@ -82,7 +82,7 @@ def test_big_data():
     subsample = list(data.keys())[256:512]
     path = tempfile.NamedTemporaryFile().name
     try:
-        handler = leveldb.Database(path)
+        handler = unqlite.Database(path)
 
         # Populate DB
         handler.update(data)
@@ -99,9 +99,11 @@ def test_big_data():
                 assert len(path) == 256
                 assert path == "#" * 256
 
-        with pytest.raises(leveldb.IOError):
-            # Only one instance at a time can access the DB.
-            leveldb.Database(path)
+        other_instance = unqlite.Database(path)
+        with pytest.raises(unqlite.OperationalError):
+            # Only one instance at a time can write the DB.
+            other_instance[b'000'] = None
+        del other_instance
 
         # The current instance can still read the data.
         len(handler[b'000']) == 11
