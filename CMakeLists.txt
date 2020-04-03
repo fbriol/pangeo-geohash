@@ -150,11 +150,7 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 # Snappy
 find_package(Snappy REQUIRED)
-
-# leveldb
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/leveldb)
-set_target_properties(leveldb PROPERTIES COMPILE_FLAGS "-fPIC")
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/leveldb)
+include_directories(${SNAPPY_INCLUDE_DIR})
 
 # unqlite
 add_library(unqlite STATIC "third_party/unqlite/unqlite.c")
@@ -166,5 +162,4 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11)
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 include_directories("src/geohash/core/include")
 pybind11_add_module(core ${SOURCES})
-set_target_properties(core PROPERTIES LINK_FLAGS "-L${SNAPPY_LIBRARY_DIR}")
-target_link_libraries(core PUBLIC leveldb unqlite ${SNAPPY_LIBRARIES})
+target_link_libraries(core PUBLIC unqlite ${SNAPPY_LIBRARIES})

@@ -42,37 +42,6 @@ def patch_unqlite(source: pathlib.Path, target: pathlib.Path):
         stream.writelines(lines)
 
 
-def patch_leveldb():
-    """Patch leveldb CMAKE to find Snappy libraries"""
-    target = WORKING_DIRECTORY.joinpath("third_party", "leveldb",
-                                        "CMakeLists.txt")
-    code = f"""
-set(
-  CMAKE_MODULE_PATH
-  "{WORKING_DIRECTORY!s}/cmake"
-)
-
-find_package(Snappy)
-if(SNAPPY_FOUND)
-  set(HAVE_SNAPPY 1)
-endif(SNAPPY_FOUND)
-"""
-    patch = False
-    with open(target) as stream:
-        lines = stream.readlines()
-
-    for ix, line in enumerate(lines):
-        if 'snappy_compress' in line:
-            lines[ix] = code
-            patch = True
-
-    if not patch:
-        return
-
-    with open(target, "w") as stream:
-        stream.writelines(lines)
-
-
 def build_dirname(extname=None):
     """Returns the name of the build directory"""
     extname = '' if extname is None else os.sep.join(extname.split(".")[:-1])
@@ -198,9 +167,6 @@ class BuildExt(setuptools.command.build_ext.build_ext):
         build_temp = pathlib.Path(WORKING_DIRECTORY, self.build_temp)
         build_temp.mkdir(parents=True, exist_ok=True)
         extdir = build_dirname(ext.name)
-
-        # patch leveldb
-        patch_leveldb()
 
         # patch unqlite
         patch_unqlite(

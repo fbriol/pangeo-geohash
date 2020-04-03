@@ -4,6 +4,7 @@ Geogrophic Index
 """
 from typing import Any, Dict, List, Optional
 import json
+import weakref
 import numpy
 from . import lock
 from . import core
