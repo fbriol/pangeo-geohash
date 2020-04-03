@@ -2,11 +2,14 @@
 Index storage support
 ---------------------
 """
-from typing import (Any, Dict, Iterable, Iterator, List, Mapping,
-                    MutableMapping, Optional, Tuple, Union)
-import weakref
+from typing import Any, Dict, List, MutableMapping, Optional
 import abc
+import io
 import os
+import pathlib
+import shutil
+import uuid
+import weakref
 from .core import storage
 
 
@@ -60,45 +63,98 @@ class MutableMapping:
     def __exit__(self, type, value, tb):
         ...
 
-
-# class Singleton(type):
-#     """Singleton meta class"""
-#     _instances = weakref.WeakValueDictionary()
-
-#     def __call__(cls, *args, **kwargs):
-#         if cls not in cls._instances:
-#             # This variable declaration is required to force a
-#             # strong reference on the instance.
-#             instance = super(Singleton, cls).__call__(*args, **kwargs)
-#             cls._instances[cls] = instance
-#         return cls._instances[cls]
+    def __iter__(self):
+        return self.keys()
 
 
-# class LevelDB(storage.leveldb.Database, metaclass=Singleton):
-#     def __init__(self, *args, **kwargs):
-#         pass
+class SymlinksLeveldb:
+    def __init__(self, path: pathlib.Path):
+        self.target = path.joinpath(str(uuid.uuid4()))
+        self.target.mkdir()
+        wd = os.getcwd()
+        try:
+            os.chdir(self.target)
+            for root, dirs, files in os.walk(path):
+                dirs.clear()
+                for item in files:
+                    if item == "LOCK":
+                        continue
+                    os.symlink(
+                        os.path.relpath(pathlib.Path(root, item), self.target),
+                        item)
+        finally:
+            os.chdir(wd)
+
+    def cleanup(self):
+        shutil.rmtree(self.target, ignore_errors=True)
 
 
-# class UnQlite(unqlite.Database, MutableMapping):
-#     """Storage class using SQLite.
+class ReadOnlyLevelDB(storage.leveldb.Database, MutableMapping):
+    def __init__(self, name: str, **kwargs):
+        path = pathlib.Path(name).absolute()
+        if not path.exists() or not path.is_dir():
+            raise ValueError(f"unable to open DB: {name}")
 
-#     Args:
-#         path (str): Location of database file.
-#         option (unqlite.Options, optional): options to control the behavior of
-#             the database
-#     """
-#     def __init__(self, path: str,
-#                  options: Optional[unqlite.Options] = None) -> None:
-#         # normalize path
-#         if path != ':mem:':
-#             path = os.path.abspath(path)
-#         super().__init__(path, options)
+        lck = storage.leveldb.LockFile(str(path.joinpath("LOCK")))
+        symlinks = SymlinksLeveldb(path)
+        del lck
 
-#     def __enter__(self) -> 'UnQlite':
-#         return self
+        self._symlink = weakref.finalize(symlinks, symlinks.cleanup)
+        super().__init__(str(symlinks.target), **kwargs)
 
-#     def __exit__(self, type, value, tb):
-#         self.commit()
+    def __enter__(self) -> 'ReadOnlyLevelDB':
+        return self
 
-#     def __iter__(self):
-#         return self.keys()
+    def __exit__(self, type, value, tb):
+        return
+
+    def __setitem__(self, key: bytes, value: object) -> None:
+        raise io.UnsupportedOperation("not writable")
+
+    def update(self, map: Dict[bytes, Any]) -> None:
+        raise io.UnsupportedOperation("not writable")
+
+    def extend(self, map: dict) -> None:
+        raise io.UnsupportedOperation("not writable")
+
+    def __delitem__(self, key: bytes) -> None:
+        raise io.UnsupportedOperation("not writable")
+
+    def clear(self) -> None:
+        raise io.UnsupportedOperation("not writable")
+
+
+class LevelDB(storage.leveldb.Database, MutableMapping):
+    def __init__(self, name: str, **kwargs):
+        super().__init__(str(pathlib.Path(name).absolute()), **kwargs)
+
+    def __enter__(self) -> 'LevelDB':
+        return self
+
+    def __exit__(self, type, value, tb):
+        return
+
+
+class UnQlite(storage.unqlite.Database, MutableMapping):
+    """Storage class using SQLite.
+
+    Args:
+        path (str): Location of database file.
+        create_if_missing (bool): If true, the database will be created if
+            it is missing.
+        error_if_exists (bool): If true, an error is raised if the database
+            already exists.
+        enable_compression (bool): If true the data is compressed when
+            writing
+    """
+    def __init__(self, name: str, **kwargs):
+        # normalize path
+        if name != ':mem:':
+            name = os.path.abspath(name)
+        super().__init__(name, **kwargs)
+
+    def __enter__(self) -> 'UnQlite':
+        return self
+
+    def __exit__(self, type, value, tb):
+        self.commit()

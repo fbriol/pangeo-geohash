@@ -64,3 +64,8 @@ class Database:
 
     def values(self, keys: Optional[List[bytes]] = None) -> List[Any]:
         ...
+
+
+class LockFile:
+    def __init__(self, name: str) -> None:
+        ...

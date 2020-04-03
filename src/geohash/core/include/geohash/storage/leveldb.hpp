@@ -1,6 +1,7 @@
 #include "geohash/storage/pickle.hpp"
 #include <leveldb/cache.h>
 #include <leveldb/db.h>
+#include <leveldb/env.h>
 #include <leveldb/write_batch.h>
 #include <memory>
 #include <pybind11/pybind11.h>
@@ -117,6 +118,36 @@ class Database {
                    const std::optional<int>& block_restart_interval,
                    const std::optional<size_t>& max_file_size,
                    ::leveldb::Options& options) -> void;
+};
+
+// Lock file like leveldb
+class FileLock {
+ public:
+  // Default constructor
+  FileLock(const std::string& name)
+      : env_(::leveldb::Env::Default()), lock_(nullptr) {
+    auto status = env_.LockFile(name, &lock_);
+    if (!status.ok()) {
+      throw IOError(status.ToString());
+    }
+  }
+
+  // Destructor
+  virtual ~FileLock() {
+    if (lock_ != nullptr) {
+      env_.UnlockFile(lock_);
+    }
+  }
+
+  // Copy constructor
+  FileLock(const FileLock&) = delete;
+
+  // Copy assignment operator
+  auto operator=(const FileLock&) -> FileLock& = delete;
+
+ private:
+  ::leveldb::EnvWrapper env_;
+  ::leveldb::FileLock* lock_;
 };
 
 }  // namespace geohash::storage::leveldb

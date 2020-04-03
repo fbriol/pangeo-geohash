@@ -2,7 +2,7 @@
 Geogrophic Index
 ----------------
 """
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, List, Optional
 import json
 import numpy
 from . import lock

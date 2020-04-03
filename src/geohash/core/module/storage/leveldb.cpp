@@ -53,4 +53,8 @@ void init_store_leveldb(py::module& m) {
            "Extend or create the database with the key/value pairs from map")
       .def("values", &store::Database::values, py::arg("keys") = py::none(),
            "Read all values from the database for the keys provided");
+
+  py::class_<store::FileLock, std::unique_ptr<store::FileLock>>(
+      m, "LockFile", "Handler to lock the specified file as leveldb does.")
+      .def(py::init<const std::string>(), py::arg("name"));
 }
