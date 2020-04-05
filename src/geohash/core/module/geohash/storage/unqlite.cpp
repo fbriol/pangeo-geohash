@@ -87,11 +87,68 @@ auto Database::error_log() const -> std::string {
 }
 
 // ---------------------------------------------------------------------------
-Database::Database(const std::string& name, bool create_if_missing,
-                   bool error_if_exists, bool enable_compression) {
-  auto mode = create_if_missing ? UNQLITE_OPEN_CREATE : UNQLITE_OPEN_READWRITE;
-  compress_ = enable_compression;
-  handle_rc(unqlite_open(&handle_, name.c_str(), mode));
+static auto decode_mode(const std::string& mode) -> unsigned int {
+  auto appending = int(0);
+  auto reading = int(0);
+  auto memory = int(0);
+  auto writing = int(0);
+
+  for (auto& item : mode) {
+    switch (item) {
+      case 'a':
+        appending = 1;
+        break;
+      case 'r':
+        reading = 1;
+        break;
+      case 'w':
+        writing = 1;
+        break;
+      case 'm':
+        memory = 1;
+        break;
+      default:
+        throw std::invalid_argument("invalid mode: " + mode);
+    }
+    if (std::count(mode.begin(), mode.end(), item) != 1) {
+      throw std::invalid_argument("invalid mode: " + mode);
+    }
+  }
+
+  if (appending + reading + writing > 1) {
+    throw std::invalid_argument(
+        "must have exactly one of append/read/write mode");
+  }
+
+  if (memory + appending + writing > 1) {
+    throw std::invalid_argument("mode 'm' can be combined anly with 'r'");
+  }
+
+  auto result = static_cast<unsigned int>(0);
+  if (writing) {
+    result |= UNQLITE_OPEN_CREATE;
+  }
+  if (appending) {
+    result |= UNQLITE_OPEN_READWRITE;
+  }
+  if (reading) {
+    result |= UNQLITE_OPEN_READONLY;
+  }
+  if (memory) {
+    result |= UNQLITE_OPEN_MMAP;
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+Database::Database(std::string name,
+                   const std::optional<std::string>& open_mode,
+                   const CompressionType compression_type)
+    : name_(std::move(name)),
+      open_mode_(open_mode.value_or("rm")),
+      compression_type_(compression_type) {
+  auto mode = decode_mode(open_mode_);
+  handle_rc(unqlite_open(&handle_, name_.c_str(), mode));
 }
 
 // ---------------------------------------------------------------------------
@@ -104,41 +161,117 @@ Database::~Database() {
 }
 
 // ---------------------------------------------------------------------------
-static auto compress(const pybind11::bytes& bytes) -> pybind11::bytes {
-  auto slice = Slice(bytes);
-  auto len = snappy::MaxCompressedLength(slice.len);
+static auto no_compress(const Slice& slice) -> pybind11::bytes {
   auto result = pybind11::reinterpret_steal<pybind11::bytes>(
-      PyBytes_FromStringAndSize(nullptr, len));
+      PyBytes_FromStringAndSize(nullptr, slice.len + 1));
+  auto buffer = PyBytes_AS_STRING(result.ptr());
+
+  // We store the type of compression used
+  buffer[0] = kNoCompression;
+  ++buffer;
+
+  memcpy(buffer, slice.ptr, sizeof(*buffer) * slice.len);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+auto Database::getstate() const -> pybind11::tuple {
+  if (name_ == ":mem:") {
+    throw std::runtime_error("Cannot pickle in-memory databases");
+  }
+  return pybind11::make_tuple(name_, open_mode_, compression_type_);
+}
+
+// ---------------------------------------------------------------------------
+auto Database::setstate(const pybind11::tuple& state)
+    -> std::shared_ptr<Database> {
+  if (pybind11::len(state) != 3) {
+    throw std::invalid_argument("invalid state");
+  }
+  return std::make_shared<Database>(state[0].cast<std::string>(),
+                                    state[1].cast<std::string>(),
+                                    state[2].cast<CompressionType>());
+}
+
+// ---------------------------------------------------------------------------
+static auto snappy_compress(const Slice& slice) -> pybind11::bytes {
+  auto compressed_len = snappy::MaxCompressedLength(slice.len);
+  auto result = pybind11::reinterpret_steal<pybind11::bytes>(
+      PyBytes_FromStringAndSize(nullptr, compressed_len + 1));
+  auto buffer = PyBytes_AS_STRING(result.ptr());
+
+  // We store the type of compression used
+  buffer[0] = kSnappyCompression;
+  ++buffer;
 
   {
     auto gil = pybind11::gil_scoped_release();
-    snappy::RawCompress(slice.ptr, slice.len, PyBytes_AS_STRING(result.ptr()),
-                        &len);
+    snappy::RawCompress(slice.ptr, slice.len, buffer, &compressed_len);
   }
-  if (_PyBytes_Resize(&result.ptr(), len) < 0) {
+  if (_PyBytes_Resize(&result.ptr(), compressed_len + 1) < 0) {
     throw pybind11::error_already_set();
   }
   return result;
 }
 
 // ---------------------------------------------------------------------------
-static auto uncompress(const pybind11::bytes& bytes) -> pybind11::bytes {
-  auto slice = Slice(bytes);
-  if (!snappy::IsValidCompressedBuffer(slice.ptr, slice.len)) {
-    return bytes;
-  }
+static auto snappy_uncompress(const Slice& slice) -> pybind11::bytes {
   auto uncompressed_len = size_t(0);
-  if (!snappy::GetUncompressedLength(slice.ptr, slice.len, &uncompressed_len)) {
-    return bytes;
+  if (!snappy::GetUncompressedLength(slice.ptr + 1, slice.len - 1,
+                                     &uncompressed_len)) {
+    throw OperationalError("unable to uncompress data");
   }
   auto result = pybind11::reinterpret_steal<pybind11::bytes>(
       PyBytes_FromStringAndSize(nullptr, uncompressed_len + 1));
   {
     auto gil = pybind11::gil_scoped_release();
-    snappy::RawUncompress(slice.ptr, static_cast<size_t>(slice.len),
+    snappy::RawUncompress(slice.ptr + 1, static_cast<size_t>(slice.len - 1),
                           PyBytes_AS_STRING(result.ptr()));
   }
   return result;
+}
+
+// ---------------------------------------------------------------------------
+static auto no_uncompress(const Slice& slice) -> pybind11::bytes {
+  auto result = pybind11::reinterpret_steal<pybind11::bytes>(
+      PyBytes_FromStringAndSize(nullptr, slice.len - 1));
+  auto buffer = PyBytes_AS_STRING(result.ptr());
+  memcpy(buffer, slice.ptr + 1, slice.len - 1);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+auto Database::compress(const pybind11::bytes& bytes) const -> pybind11::bytes {
+  auto slice = Slice(bytes);
+  switch (compression_type_) {
+    case kNoCompression:
+      return no_compress(slice);
+      break;
+    case kSnappyCompression:
+      return snappy_compress(slice);
+      break;
+  }
+  throw OperationalError("unknown compression type " +
+                         std::to_string(compression_type_));
+}
+
+// ---------------------------------------------------------------------------
+auto Database::uncompress(const pybind11::bytes& bytes) const
+    -> pybind11::bytes {
+  auto slice = Slice(bytes);
+  if (slice.len < 2) {
+    throw OperationalError("unable to uncompress value");
+  }
+  switch (slice.ptr[0]) {
+    case kNoCompression:
+      return no_uncompress(slice);
+      break;
+    case kSnappyCompression:
+      return snappy_uncompress(slice);
+      break;
+  }
+  throw OperationalError("unknown compression type " +
+                         std::to_string(static_cast<int>(slice.ptr[0])));
 }
 
 // ---------------------------------------------------------------------------
@@ -150,8 +283,7 @@ auto Database::setitem(const pybind11::bytes& key,
   } else {
     value.append(obj);
   }
-  auto bytes_object = pickle_.dumps(value);
-  auto data = compress_ ? compress(bytes_object) : bytes_object;
+  auto data = compress(pickle_.dumps(value));
   auto slice_key = Slice(key);
   auto slice_data = Slice(data);
   {

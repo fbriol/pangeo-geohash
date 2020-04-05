@@ -1,4 +1,5 @@
 import tempfile
+import pickle
 import shutil
 import pytest
 from geohash.core.storage import unqlite
@@ -8,7 +9,7 @@ from geohash.core import string
 def test_interface():
     target = tempfile.NamedTemporaryFile().name
     try:
-        handler = unqlite.Database(target)
+        handler = unqlite.Database(target, mode="w")
 
         # __len__
         assert len(handler) == 0
@@ -82,7 +83,7 @@ def test_big_data():
     subsample = list(data.keys())[256:512]
     path = tempfile.NamedTemporaryFile().name
     try:
-        handler = unqlite.Database(path)
+        handler = unqlite.Database(path, mode="w")
 
         # Populate DB
         handler.update(data)
@@ -93,21 +94,33 @@ def test_big_data():
         handler.extend(data)
 
         # Check all values
-        for item in handler.values(subsample):
-            assert len(item) == 10
-            for path in item:
-                assert len(path) == 256
-                assert path == "#" * 256
+        for items in handler.values(subsample):
+            assert len(items) == 10
+            for item in items:
+                assert len(item) == 256
+                assert item == "#" * 256
 
-        other_instance = unqlite.Database(path)
-        with pytest.raises(unqlite.OperationalError):
-            # Only one instance at a time can write the DB.
-            other_instance[b'000'] = None
-        del other_instance
-
-        # The current instance can still read the data.
-        len(handler[b'000']) == 11
-
+        other_instance = unqlite.Database(path, mode="a")
+        with pytest.raises(unqlite.LockError):
+            # Only one instance at a time can write to the database if a
+            # transaction is pending.
+            other_instance[b'000'] = 1
         del handler
+
+        # Now the new instance can modify the database.
+        other_instance = unqlite.Database(path, mode="a")
+        other_instance[b'000'] = 1
+
+        handler = unqlite.Database(path, mode="r")
+        assert handler[b'000'] != [1]
+
+        # No modification allowed in read only mode
+        with pytest.raises(unqlite.ProgrammingError):
+            handler[b'000'] = 1
+
+        # Pickle support
+        other_instance = pickle.loads(pickle.dumps(handler))
+        assert handler[b'000'], [1]
+
     finally:
         shutil.rmtree(path, ignore_errors=True)

@@ -17,12 +17,23 @@ class ProgrammingError(Exception):
     ...
 
 
+class CompressionType:
+    none: 'CompressionType'
+    snappy: 'CompressionType'
+
+
 class Database:
     def __init__(self,
                  name: str,
-                 create_if_missing: bool = True,
-                 error_if_exists: bool = False,
-                 enable_compression: bool = True) -> None:
+                 mode: Optional[str] = None,
+                 compression_type: CompressionType = CompressionType.snappy
+                 ) -> None:
+        ...
+
+    def __getstate__(self) -> Tuple:
+        ...
+
+    def __setstate__(self, state: Tuple) -> None:
         ...
 
     def __contains__(self, key: bytes) -> bool:

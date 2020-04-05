@@ -27,12 +27,19 @@ class LockError : public std::runtime_error {
   using std::runtime_error::runtime_error;
 };
 
+// The data stored in the database can be compressed using the following
+// algorithms.
+enum CompressionType {
+  kNoCompression = 0x0,
+  kSnappyCompression = 0x1,
+};
+
 // Key/Value store
 class Database {
  public:
   // Default constructor
-  Database(const std::string& name, bool create_if_missing,
-           bool error_if_exists, bool enable_compression);
+  Database(std::string name, const std::optional<std::string>& open_mode,
+           CompressionType compression_type);
 
   // Destructor
   virtual ~Database();
@@ -42,6 +49,13 @@ class Database {
 
   // Copy assignment operator
   auto operator=(const Database&) -> Database& = delete;
+
+  // Get state of this instance
+  [[nodiscard]] auto getstate() const -> pybind11::tuple;
+
+  // Create a new instance from the information saved in the "state" variable
+  static auto setstate(const pybind11::tuple& state)
+      -> std::shared_ptr<Database>;
 
   // Set the key/value pair, overwriting existing
   auto setitem(const pybind11::bytes& key, const pybind11::object& obj) const
@@ -90,10 +104,15 @@ class Database {
 
  private:
   ::unqlite* handle_{nullptr};
+  std::string name_;
+  std::string open_mode_;
   Pickle pickle_{};
-  bool compress_{true};
-
+  CompressionType compression_type_;
+  
   static auto handle_rc(int rc) -> void;
+
+  auto compress(const pybind11::bytes& bytes) const -> pybind11::bytes;
+  auto uncompress(const pybind11::bytes& bytes) const -> pybind11::bytes;
 };
 
 }  // namespace geohash::storage::unqlite
