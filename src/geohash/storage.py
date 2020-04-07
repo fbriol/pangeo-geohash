@@ -2,7 +2,7 @@
 Index storage support
 ---------------------
 """
-from typing import Any, Dict, List, MutableMapping, Optional
+from typing import Any, Dict, List, Optional
 import abc
 import os
 from .core import storage
