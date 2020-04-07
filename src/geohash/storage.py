@@ -4,12 +4,7 @@ Index storage support
 """
 from typing import Any, Dict, List, MutableMapping, Optional
 import abc
-import io
 import os
-import pathlib
-import shutil
-import uuid
-import weakref
 from .core import storage
 
 
@@ -68,16 +63,7 @@ class MutableMapping:
 
 
 class UnQlite(storage.unqlite.Database, MutableMapping):
-    """Storage class using SQLite.
-
-    Args:
-        path (str): Location of database file.
-        create_if_missing (bool): If true, the database will be created if
-            it is missing.
-        error_if_exists (bool): If true, an error is raised if the database
-            already exists.
-        enable_compression (bool): If true the data is compressed when
-            writing
+    """Storage class using UnQlite.
     """
     def __init__(self, name: str, **kwargs):
         # normalize path

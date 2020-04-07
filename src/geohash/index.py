@@ -4,7 +4,6 @@ Geogrophic Index
 """
 from typing import Any, Dict, List, Optional
 import json
-import weakref
 import numpy
 from . import lock
 from . import core
@@ -44,6 +43,16 @@ class GeoHash:
         self._store = store
         self._precision = precision
         self._synchronizer = synchronizer or lock.PuppetSynchronizer()
+
+    @property
+    def store(self):
+        """Gets the object hndling the storage of this instance"""
+        return self._store
+
+    @property
+    def precision(self):
+        """Accuracy of this instance"""
+        return self._precision
 
     def set_properties(self) -> None:
         """Definition of index properties"""
