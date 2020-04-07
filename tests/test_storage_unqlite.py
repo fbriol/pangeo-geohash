@@ -69,6 +69,10 @@ def test_interface():
                 handler[key] == [item, item]
                 assert key in handler
 
+        # Pickle support
+        handler = pickle.loads(pickle.dumps(handler))
+        assert handler[b'1'] == [1, 1]
+
         del handler
     finally:
         shutil.rmtree(target, ignore_errors=True)
@@ -118,9 +122,7 @@ def test_big_data():
         with pytest.raises(unqlite.ProgrammingError):
             handler[b'000'] = 1
 
-        # Pickle support
-        other_instance = pickle.loads(pickle.dumps(handler))
-        assert handler[b'000'], [1]
-
+        del handler
+        del other_instance
     finally:
         shutil.rmtree(path, ignore_errors=True)
