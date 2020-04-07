@@ -1,7 +1,12 @@
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-#include <sstream>
 #include "geohash/geometry.hpp"
+
+#include <pybind11/numpy.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
+#include <sstream>
+
+#include "geohash/rtree.hpp"
 
 namespace py = pybind11;
 
@@ -69,4 +74,40 @@ Args:
            << repr_point(self.max_corner()) << ")";
         return ss.str();
       });
+
+  // The result obtained from the queries in the RTree
+  PYBIND11_NUMPY_DTYPE(geohash::geometry::RTreeQueryResult, distance, index);
+
+  py::class_<geohash::geometry::Projection>(m, "Projection",
+                                            "Coordinate transformation")
+      .def(py::init<std::string>(), py::arg("params"))
+      .def(py::init<int>(), py::arg("code") = 4326);
+
+  py::class_<geohash::geometry::RTree>(m, "RTree", "R*Tree")
+      .def(py::init<std::optional<geohash::geometry::Projection>>(),
+           py::arg("projection") = py::none())
+      .def("clear", &geohash::geometry::RTree::clear)
+      .def("__bool__", &geohash::geometry::RTree::empty)
+      .def("__len__", &geohash::geometry::RTree::size)
+      .def("packing", &geohash::geometry::RTree::packing)
+      .def(
+          "query",
+          [](const geohash::geometry::RTree& self,
+             const geohash::Point& coordinate, const uint32_t k,
+             const bool within)
+              -> Eigen::Matrix<geohash::geometry::RTreeQueryResult, -1, 1> {
+            return self.query(coordinate, k, within);
+          },
+          py::arg("coordinate"), py::arg("k"), py::arg("within") = false)
+      .def(
+          "query",
+          [](const geohash::geometry::RTree& self,
+             const Eigen::Ref<const Eigen::Matrix<geohash::Point, -1, 1>>&
+                 coordinates,
+             const uint32_t k, bool within, size_t num_threads)
+              -> Eigen::Matrix<geohash::geometry::RTreeQueryResult, -1, -1> {
+            return self.query(coordinates, k, within, num_threads);
+          },
+          py::arg("coordinates"), py::arg("k"), py::arg("within") = false,
+          py::arg("num_threads") = 0);
 }
