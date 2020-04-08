@@ -22,3 +22,18 @@ class Point:
 class Box:
     def __init__(self, min_corner: Point, max_corner: Point) -> None:
         ...
+
+    def __repr__(self) -> str:
+        ...
+
+    def contains(self, point: Point) -> bool:
+        ...
+
+    @property
+    def max_corner(self) -> Point:
+        ...
+
+    @property
+    def min_corner(self) -> Point:
+        ...
+
