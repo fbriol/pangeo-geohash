@@ -1,8 +1,9 @@
 trigger:
 - master
 
-pool:
-  vmImage: 'ubuntu-latest'
+jobs:
+- job:
+  displayName: Ubuntu-latest
   pool:
     vmImage: 'ubuntu-latest'
   strategy:
