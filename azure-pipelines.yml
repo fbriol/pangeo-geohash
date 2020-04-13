@@ -1,0 +1,98 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+  pool:
+    vmImage: 'ubuntu-latest'
+  strategy:
+    matrix:
+      Python37:
+        python.version: '3.7'
+  steps:
+  - checkout: self
+    fetchDepth: 1
+  - bash: git submodule update --init --recursive
+    displayName: Initialize the submodules
+  - script: |
+      sudo apt-get update
+      sudo apt-get install -y libc++-dev libc++abi-dev libc++abi1 libstdc++-8-dev gcc-8 g++-8
+    displayName: Install GCC
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+  - bash: conda create --yes --quiet --name Build
+    displayName: Create Anaconda environment
+  - bash: |
+      source activate Build
+      conda install --yes --quiet --name Build python=$PYTHON_VERSION cmake eigen boost-cpp numpy pytest setuptools
+    displayName: Install build requirements
+  - bash: |
+      source activate Build
+      python setup.py build --cxx-compiler g++-8
+    displayName: Build package
+  - bash: |
+      source activate Build
+      python setup.py test
+    displayName: Test cases
+- job:
+  displayName: macOS-latest
+  pool:
+    vmImage: 'macOS-latest'
+  strategy:
+    matrix:
+      Python37:
+        python.version: '3.7'
+  steps:
+  - checkout: self
+    fetchDepth: 1
+  - bash: git submodule update --init --recursive
+    displayName: Initialize the submodules
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+  - bash: sudo chown -R $USER $CONDA
+    displayName: Take ownership of conda installation
+  - bash: conda create --yes --quiet --name Build
+    displayName: Create Anaconda environment
+  - bash: |
+      source activate Build
+      conda install --yes --quiet --name Build python=$PYTHON_VERSION cmake eigen boost-cpp numpy pytest setuptools
+    displayName: Install build requirements
+  - bash: |
+      source activate Build
+      python setup.py build
+    displayName: Build package
+  - bash: |
+      source activate Build
+      python setup.py test
+    displayName: Test cases
+- job:
+  displayName: windows-latest
+  pool:
+    vmImage: 'windows-latest'
+  strategy:
+    matrix:
+      Python37:
+        python.version: '3.7'
+  steps:
+  - checkout: self
+    fetchDepth: 1
+  - script: git submodule update --init --recursive
+    displayName: Initialize the submodules
+  - powershell: Write-Host "##vso[task.prependpath]$env:CONDA\Scripts"
+    displayName: Add conda to PATH
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+  - script: conda create --yes --quiet --name Build
+    displayName: Create Anaconda environment
+  - script: |
+      call activate Build
+      conda install --yes --quiet --name Build python=%PYTHON_VERSION% cmake eigen boost-cpp numpy pytest setuptools
+    displayName: Install build requirements
+  - script: |
+      call activate Build
+      python setup.py build
+    displayName: Build package
+  - script: |
+      call activate Build
+      python setup.py test
+    displayName: Test cases
