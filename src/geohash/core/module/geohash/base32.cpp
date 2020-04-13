@@ -3,7 +3,7 @@
 namespace geohash {
 
 // Invalid character in an encoding
-const char Base32::kInvalid_ = static_cast<char>(255);
+const char Base32::kInvalid_ = std::numeric_limits<char>::max();
 
 // Encoding characters
 const std::array<char, 32> Base32::encode_ =
