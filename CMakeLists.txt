@@ -155,7 +155,9 @@ include_directories(${SNAPPY_INCLUDE_DIR})
 # unqlite
 add_library(unqlite STATIC "third_party/unqlite/unqlite.c")
 target_compile_definitions(unqlite PUBLIC UNQLITE_ENABLE_THREADS)
-set_target_properties(unqlite PROPERTIES COMPILE_FLAGS "-fPIC")
+if(NOT WIN32)
+  set_target_properties(unqlite PROPERTIES COMPILE_FLAGS "-fPIC")
+endif()
 
 # core module
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/third_party/pybind11)
