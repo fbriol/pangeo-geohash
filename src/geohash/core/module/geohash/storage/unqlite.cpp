@@ -3,7 +3,6 @@
 #include <snappy.h>
 
 #include <algorithm>
-#include <optional>
 
 namespace geohash::storage::unqlite {
 

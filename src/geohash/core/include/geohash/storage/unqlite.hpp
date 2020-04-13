@@ -1,8 +1,11 @@
 #pragma once
-#include "pickle.hpp"
 #include <pybind11/pybind11.h>
-#include <string>
 #include <unqlite.h>
+
+#include <optional>
+#include <string>
+
+#include "pickle.hpp"
 
 namespace geohash::storage::unqlite {
 
@@ -108,7 +111,7 @@ class Database {
   std::string open_mode_;
   Pickle pickle_{};
   CompressionType compression_type_;
-  
+
   static auto handle_rc(int rc) -> void;
 
   auto compress(const pybind11::bytes& bytes) const -> pybind11::bytes;
