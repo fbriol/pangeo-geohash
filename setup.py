@@ -1,11 +1,12 @@
 """This script is the entry point for building, distributing and installing
 this module using distutils/setuptools."""
 import distutils.command.build
+import os
 import pathlib
 import platform
-import subprocess
-import os
 import re
+import shlex
+import subprocess
 import sys
 import sysconfig
 import setuptools
@@ -249,6 +250,47 @@ class Build(distutils.command.build.build):
         super().run()
 
 
+class Test(setuptools.command.test.test):
+    """Test runner"""
+    user_options = [("pytest-args=", None, "Arguments to pass to pytest")]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pytest_args = ''
+
+    def initialize_options(self):
+        """Set default values for all the options that this command
+        supports"""
+        super().initialize_options()
+        self.pytest_args = ''
+
+    def finalize_options(self):
+        """Set final values for all the options that this command supports"""
+        dirname = pathlib.Path(pathlib.Path(__file__).absolute().parent)
+        rootdir = "--rootdir=" + str(dirname)
+        if self.pytest_args is None:
+            self.pytest_args = ''
+        self.pytest_args = rootdir + " tests " + self.pytest_args
+
+    @staticmethod
+    def tempdir():
+        """Gets the build directory of the extension"""
+        return pathlib.Path(
+            WORKING_DIRECTORY, "build",
+            "temp.%s-%d.%d" % (sysconfig.get_platform(), MAJOR, MINOR))
+
+    def run_tests(self):
+        """Run tests"""
+        import pytest
+        sys.path.insert(0, build_dirname())
+
+        errno = pytest.main(
+            shlex.split(self.pytest_args,
+                        posix=platform.system() != 'Windows'))
+        if errno:
+            sys.exit(errno)
+
+
 def long_description():
     """Reads the README file"""
     with open(pathlib.Path(WORKING_DIRECTORY, "README.md")) as stream:
@@ -285,6 +327,7 @@ def main():
         cmdclass={
             'build': Build,
             'build_ext': BuildExt,
+            'test': Test,
         },
         data_files=typehints(),
         description='Interpolation of geo-referenced data for Python.',
