@@ -25,7 +25,7 @@ jobs:
     displayName: Create Anaconda environment
   - bash: |
       source activate Build
-      conda install --yes --quiet --name Build python=$PYTHON_VERSION cmake eigen boost-cpp numpy pytest setuptools
+      conda install --yes --quiet --name Build python=$PYTHON_VERSION cmake eigen boost-cpp numpy pytest snappy setuptools
     displayName: Install build requirements
   - bash: |
       source activate Build
@@ -56,7 +56,7 @@ jobs:
     displayName: Create Anaconda environment
   - bash: |
       source activate Build
-      conda install --yes --quiet --name Build python=$PYTHON_VERSION cmake eigen boost-cpp numpy pytest setuptools
+      conda install --yes --quiet --name Build python=$PYTHON_VERSION cmake eigen boost-cpp numpy pytest snappy setuptools
     displayName: Install build requirements
   - bash: |
       source activate Build
@@ -87,7 +87,7 @@ jobs:
     displayName: Create Anaconda environment
   - script: |
       call activate Build
-      conda install --yes --quiet --name Build python=%PYTHON_VERSION% cmake eigen boost-cpp numpy pytest setuptools
+      conda install --yes --quiet --name Build python=%PYTHON_VERSION% cmake eigen boost-cpp numpy pytest snappy setuptools
     displayName: Install build requirements
   - script: |
       call activate Build
