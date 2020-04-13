@@ -1,6 +1,9 @@
 #include "geohash/storage/unqlite.hpp"
+
 #include <snappy.h>
+
 #include <algorithm>
+#include <optional>
 
 namespace geohash::storage::unqlite {
 
