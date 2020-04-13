@@ -1,4 +1,6 @@
 #include "geohash/int64.hpp"
+
+#include <array>
 #include <iostream>
 
 namespace geohash::int64 {
@@ -272,6 +274,55 @@ auto bounding_boxes(const std::optional<Box>& box, const uint32_t precision)
 
         result(ix++) = encode(
             {point_sw.lng + lng_shift, point_sw.lat + lat_shift}, precision);
+      }
+    }
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+auto where(const Eigen::Ref<const Eigen::Matrix<uint64_t, -1, -1>>& hash)
+    -> std::map<uint64_t, std::tuple<std::tuple<int64_t, int64_t>,
+                                     std::tuple<int64_t, int64_t>>> {
+  // Index shifts of neighboring pixels
+  static const auto shift_row =
+      std::array<int64_t, 8>{-1, -1, -1, 0, 1, 0, 1, 1};
+  static const auto shift_col =
+      std::array<int64_t, 8>{-1, 1, 0, -1, -1, 1, 0, 1};
+
+  auto result = std::map<uint64_t, std::tuple<std::tuple<int64_t, int64_t>,
+                                              std::tuple<int64_t, int64_t>>>();
+
+  auto rows = hash.rows();
+  auto cols = hash.cols();
+
+  for (int64_t ix = 0; ix < rows; ++ix) {
+    for (int64_t jx = 0; jx < cols; ++jx) {
+      const auto code = hash(ix, jx);
+
+      // Hash already been processed?
+      auto it = result.find(code);
+      if (it == result.end()) {
+        result.emplace(std::make_pair(
+            code,
+            std::make_tuple(std::make_tuple(ix, ix), std::make_tuple(jx, jx))));
+        continue;
+      }
+
+      for (int64_t kx = 0; kx < 8; ++kx) {
+        const auto i = ix + shift_row[kx];
+        const auto j = jx + shift_col[kx];
+
+        // Does the adjacent pixel belong to the same GeoHash?
+        if (i >= 0 && i < rows && j >= 0 && j < cols && code == hash(i, j)) {
+          auto& first = std::get<0>(it->second);
+          std::get<0>(first) = std::min(std::get<0>(first), i);
+          std::get<1>(first) = std::max(std::get<1>(first), i);
+
+          auto& second = std::get<1>(it->second);
+          std::get<0>(second) = std::min(std::get<0>(second), j);
+          std::get<1>(second) = std::max(std::get<1>(second), j);
+        }
       }
     }
   }

@@ -1,8 +1,12 @@
 #pragma once
-#include "geohash/geometry.hpp"
-#include <Eigen/Core>
 #include <pybind11/numpy.h>
+
+#include <Eigen/Core>
+#include <map>
+#include <tuple>
 #include <vector>
+
+#include "geohash/geometry.hpp"
 
 namespace geohash::string {
 
@@ -21,9 +25,7 @@ class Array {
         size_(size) {}
 
   // Get the pointer to the raw memory
-  [[nodiscard]] inline auto buffer() const -> char* {
-    return array_->data();
-  }
+  [[nodiscard]] inline auto buffer() const -> char* { return array_->data(); }
 
   // Creates the numpy array from the memory allocated in the C++ code without
   // copying the data.
@@ -44,8 +46,7 @@ class Array {
 };
 
 // Encode a point into geohash with the given bit depth
-auto encode(const Point& point, char* const buffer, uint32_t precision)
-    -> void;
+auto encode(const Point& point, char* const buffer, uint32_t precision) -> void;
 
 // Encode points into geohash with the given bit depth
 [[nodiscard]] auto encode(
@@ -78,5 +79,10 @@ auto encode(const Point& point, char* const buffer, uint32_t precision)
 // Returns all GeoHash with the defined box
 [[nodiscard]] auto bounding_boxes(const std::optional<Box>& box,
                                   const uint32_t chars) -> pybind11::array;
+
+// Returns the start and end indexes of the different GeoHash boxes.
+[[nodiscard]] auto where(const pybind11::array& hashs)
+    -> std::map<std::string, std::tuple<std::tuple<int64_t, int64_t>,
+                                        std::tuple<int64_t, int64_t>>>;
 
 }  // namespace geohash::string

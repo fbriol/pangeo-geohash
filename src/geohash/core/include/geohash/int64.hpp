@@ -1,9 +1,11 @@
 #pragma once
-#include "geohash/math.hpp"
-#include "geohash/geometry.hpp"
 #include <Eigen/Core>
-#include <tuple>
+#include <map>
 #include <optional>
+#include <tuple>
+
+#include "geohash/geometry.hpp"
+#include "geohash/math.hpp"
 
 namespace geohash::int64 {
 
@@ -74,5 +76,11 @@ namespace geohash::int64 {
 // Returns all the GeoHash codes within the box.
 [[nodiscard]] auto bounding_boxes(const std::optional<Box>& box, uint32_t chars)
     -> Eigen::Matrix<uint64_t, -1, 1>;
+
+// Returns the start and end indexes of the different GeoHash boxes.
+[[nodiscard]] auto where(
+    const Eigen::Ref<const Eigen::Matrix<uint64_t, -1, -1>>& hashs)
+    -> std::map<uint64_t, std::tuple<std::tuple<int64_t, int64_t>,
+                                     std::tuple<int64_t, int64_t>>>;
 
 }  // namespace geohash::int64

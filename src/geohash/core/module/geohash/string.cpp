@@ -1,6 +1,9 @@
+#include "geohash/string.hpp"
+
+#include <array>
+
 #include "geohash/base32.hpp"
 #include "geohash/int64.hpp"
-#include "geohash/string.hpp"
 
 namespace geohash::string {
 
@@ -158,6 +161,63 @@ auto bounding_boxes(const std::optional<Box>& box, const uint32_t precision)
     }
   }
   return result.pyarray();
+}
+
+auto where(const pybind11::array& hashs)
+    -> std::map<std::string, std::tuple<std::tuple<int64_t, int64_t>,
+                                        std::tuple<int64_t, int64_t>>> {
+  // Index shifts of neighboring pixels
+  static const auto shift_row =
+      std::array<int64_t, 8>{-1, -1, -1, 0, 1, 0, 1, 1};
+  static const auto shift_col =
+      std::array<int64_t, 8>{-1, 1, 0, -1, -1, 1, 0, 1};
+
+  auto result =
+      std::map<std::string, std::tuple<std::tuple<int64_t, int64_t>,
+                                       std::tuple<int64_t, int64_t>>>();
+
+  auto info = Array::get_info(hashs, 2);
+  auto rows = info.shape[0];
+  auto cols = info.shape[1];
+  auto chars = info.strides[1];
+  auto ptr = static_cast<char*>(info.ptr);
+  std::string current_code;
+  std::string neighboring_code;
+
+  assert(chars <= 12);
+
+  for (int64_t ix = 0; ix < rows; ++ix) {
+    for (int64_t jx = 0; jx < cols; ++jx) {
+      current_code = std::string(ptr + (ix * cols + jx) * chars, chars);
+
+      auto it = result.find(current_code);
+      if (it == result.end()) {
+        result.emplace(std::make_pair(
+            current_code,
+            std::make_tuple(std::make_tuple(ix, ix), std::make_tuple(jx, jx))));
+        continue;
+      }
+
+      for (int64_t kx = 0; kx < 8; ++kx) {
+        const auto i = ix + shift_row[kx];
+        const auto j = jx + shift_col[kx];
+
+        if (i >= 0 && i < rows && j >= 0 && j < cols) {
+          neighboring_code = std::string(ptr + (i * cols + j) * chars, chars);
+          if (current_code == neighboring_code) {
+            auto& first = std::get<0>(it->second);
+            std::get<0>(first) = std::min(std::get<0>(first), i);
+            std::get<1>(first) = std::max(std::get<1>(first), i);
+
+            auto& second = std::get<1>(it->second);
+            std::get<0>(second) = std::min(std::get<0>(second), j);
+            std::get<1>(second) = std::max(std::get<1>(second), j);
+          }
+        }
+      }
+    }
+  }
+  return result;
 }
 
 }  // namespace geohash::string

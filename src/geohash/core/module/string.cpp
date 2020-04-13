@@ -1,10 +1,13 @@
 #include "geohash/string.hpp"
-#include "geohash/int64.hpp"
-#include <Eigen/Core>
+
 #include <pybind11/eigen.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+
+#include <Eigen/Core>
+
+#include "geohash/int64.hpp"
 
 namespace py = pybind11;
 
@@ -114,5 +117,19 @@ void init_string(py::module& m) {
           py::arg("box") = py::none(), py::arg("precision") = 12,
           "Returns the property of the grid covering the given box: geohash of "
           "the minimum corner point, number of boxes in longitudes and "
-          "latitudes.");
+          "latitudes.")
+      .def(
+          "where",
+          // We want to return an associative dictionary between bytes and
+          // tuples and not str and tuples.
+          [](const pybind11::array& hash) -> py::dict {
+            auto result = py::dict();
+            for (auto&& item : geohash::string::where(hash)) {
+              auto key = py::bytes(item.first);
+              result[key] = py::cast(item.second);
+            }
+            return result;
+          },
+          py::arg("hash"),
+          "Returns the start and end indexes of the different GeoHash boxes.");
 }
