@@ -3,6 +3,7 @@
 #include <array>
 #include <iostream>
 
+// Ref: https://mmcloughlin.com/posts/geohash-assembly
 namespace geohash::int64 {
 namespace detail {
 
