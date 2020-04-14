@@ -4106,7 +4106,8 @@ def test_encoding_decoding():
     points = np.array([(item[3], item[2]) for item in testcases], dtype=dtype)
 
     int_hashs = geohash.core.int64.encode(points)
-    assert np.all([item[0] for item in testcases] == int_hashs)
+    assert np.all(
+        np.array([item[0] for item in testcases], dtype='uint64') == int_hashs)
     decoded_points = geohash.core.int64.decode(int_hashs, round=True)
     assert np.all(np.abs(points["lat"] - decoded_points["lat"]) < 1e-7)
     assert np.all(np.abs(points["lng"] - decoded_points["lng"]) < 1e-7)
