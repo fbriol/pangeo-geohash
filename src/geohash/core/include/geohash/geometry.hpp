@@ -1,8 +1,12 @@
 #pragma once
-#include "geohash/math.hpp"
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/register/box.hpp>
+#include <boost/geometry/geometries/register/point.hpp>
 #include <cmath>
 #include <list>
 #include <tuple>
+
+#include "geohash/math.hpp"
 
 namespace geohash {
 
@@ -20,11 +24,10 @@ class Box {
 
   // Constructor taking the minimum corner point and the maximum corner point
   Box(const Point& min_corner, const Point& max_corner)
-      : min_corner_(min_corner),
-        max_corner_(max_corner){}
+      : min_corner_(min_corner), max_corner_(max_corner) {}
 
-            // Returns the center of the box.
-            [[nodiscard]] inline constexpr auto center() const -> Point {
+  // Returns the center of the box.
+  [[nodiscard]] inline constexpr auto center() const -> Point {
     return {(min_corner_.lng + max_corner_.lng) * 0.5,
             (min_corner_.lat + max_corner_.lat) * 0.5};
   }
@@ -81,8 +84,14 @@ class Box {
   // Returns the minimum corner point
   [[nodiscard]] auto min_corner() const -> const Point& { return min_corner_; }
 
+  // Returns the minimum corner point
+  [[nodiscard]] auto min_corner() -> Point& { return min_corner_; }
+
   // Returns the maximum corner point
   [[nodiscard]] auto max_corner() const -> const Point& { return max_corner_; }
+
+  // Returns the maximum corner point
+  [[nodiscard]] auto max_corner() -> Point& { return max_corner_; }
 
  private:
   Point min_corner_{};
@@ -94,5 +103,18 @@ class Box {
     return power10(m);
   }
 };
+
+}  // namespace geohash
+
+BOOST_GEOMETRY_REGISTER_POINT_2D(
+    geohash::Point, double,
+    boost::geometry::cs::geographic<boost::geometry::degree>, lng, lat)
+
+BOOST_GEOMETRY_REGISTER_BOX(geohash::Box, geohash::Point, min_corner(),
+                            max_corner())
+
+namespace geohash {
+
+using Polygon = boost::geometry::model::polygon<Point>;
 
 }  // namespace geohash
