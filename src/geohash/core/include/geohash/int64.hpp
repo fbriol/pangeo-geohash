@@ -77,6 +77,14 @@ namespace geohash::int64 {
 [[nodiscard]] auto bounding_boxes(const std::optional<Box>& box, uint32_t chars)
     -> Eigen::Matrix<uint64_t, -1, 1>;
 
+// Returns all the GeoHash codes within the polygon.
+[[nodiscard]] inline auto bounding_boxes(const Polygon& polygon, uint32_t chars)
+    -> Eigen::Matrix<uint64_t, -1, 1> {
+  auto box = Box();
+  boost::geometry::envelope<Polygon, Box>(polygon, box);
+  return bounding_boxes(box, chars);
+}
+
 // Returns the start and end indexes of the different GeoHash boxes.
 [[nodiscard]] auto where(
     const Eigen::Ref<const Eigen::Matrix<uint64_t, -1, -1>>& hashs)

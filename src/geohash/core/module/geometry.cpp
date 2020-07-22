@@ -127,7 +127,7 @@ Args:
                   for (auto ix = 0LL; ix < inner.size(); ++ix) {
                     boost::geometry::append(self->inners()[count], inner[ix]);
                   }
-                } catch (py::cast_error) {
+                } catch (const py::cast_error&) {
                   throw std::invalid_argument(
                       "outers must be a list of "
                       "numpy.ndarray[geohash.core.Point]");

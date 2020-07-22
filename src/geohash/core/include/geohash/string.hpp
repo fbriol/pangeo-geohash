@@ -81,6 +81,14 @@ auto encode(const Point& point, char* const buffer, uint32_t precision) -> void;
 [[nodiscard]] auto bounding_boxes(const std::optional<Box>& box,
                                   const uint32_t chars) -> pybind11::array;
 
+// Returns all the GeoHash codes within the polygon.
+[[nodiscard]] inline auto bounding_boxes(const Polygon& polygon, uint32_t chars)
+    -> pybind11::array {
+  auto box = Box();
+  boost::geometry::envelope<Polygon, Box>(polygon, box);
+  return bounding_boxes(box, chars);
+}
+
 // Returns the start and end indexes of the different GeoHash boxes.
 [[nodiscard]] auto where(const pybind11::array& hashs)
     -> std::map<std::string, std::tuple<std::tuple<int64_t, int64_t>,

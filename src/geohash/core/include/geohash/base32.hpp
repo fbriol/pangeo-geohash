@@ -1,5 +1,8 @@
 #pragma once
 #include <array>
+#include <cstdint>
+#include <cstdlib>
+#include <limits>
 #include <tuple>
 
 namespace geohash {
@@ -7,7 +10,6 @@ namespace geohash {
 // Encoding encapsulates an encoding defined by a given base32 alphabet.
 class Base32 {
  public:
-
   // Default constructor
   Base32() {
     decode_.fill(Base32::kInvalid_);
@@ -30,7 +32,8 @@ class Base32 {
 
   // Returns the string decoded into bits of a 64-bit word and the the number of
   // characters other than the null character.
-  [[nodiscard]] inline auto decode(const char* const buffer, const size_t count) const
+  [[nodiscard]] inline auto decode(const char* const buffer,
+                                   const size_t count) const
       -> std::tuple<uint64_t, uint32_t> {
     auto hash = static_cast<uint64_t>(0);
     auto it = buffer;
@@ -42,8 +45,8 @@ class Base32 {
   }
 
   // Encode bits of 64-bit word into a string.
-  inline auto static encode(uint64_t hash, char* const buffer, const size_t count)
-      -> void {
+  inline auto static encode(uint64_t hash, char* const buffer,
+                            const size_t count) -> void {
     auto it = buffer + count - 1;
     while (it >= buffer) {
       *(it--) = encode_[hash & 0x1fU];
