@@ -83,5 +83,5 @@
         "condition_variable": "cpp"
     },
     "cmake.configureOnOpen": false,
-    "python.pythonPath": "/Users/fbriol/anaconda3/bin/python"
+    "python.pythonPath": "/Users/fbriol/opt/miniconda3/bin/python"
 }
